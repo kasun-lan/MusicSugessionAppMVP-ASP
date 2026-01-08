@@ -1,0 +1,59 @@
+﻿@{
+    ViewData["Title"] = "Crate Source";
+    Layout = "_Layout";
+}
+
+<div class="app">
+
+    <div class="content">
+        <div class="page-title">
+            CRATE SOURCE
+        </div>
+
+        <div class="page-description">
+            Tell us an artist who fits your taste and we’ll base the crate on some genres.
+        </div>
+
+        <div class="artist-inputs">
+            <input type="text" class="artist-input" placeholder="Artist 1" />
+            <input type="text" class="artist-input" placeholder="Artist 2" />
+            <input type="text" class="artist-input" placeholder="Artist 3" />
+        </div>
+
+        <button class="primary-btn disabled" id="createCrateBtn" disabled>
+            Create crate
+        </button>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-btn menu" aria-label="Menu"></button>
+        <button class="nav-btn home" aria-label="Home"></button>
+        <button class="nav-btn info" aria-label="Info"></button>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const inputs = document.querySelectorAll(".artist-input");
+        const button = document.getElementById("createCrateBtn");
+
+        function updateButtonState() {
+            const hasValue = Array.from(inputs)
+                .some(i => i.value.trim().length > 0);
+
+            if (hasValue) {
+                button.disabled = false;
+                button.classList.remove("disabled");
+            } else {
+                button.disabled = true;
+                button.classList.add("disabled");
+            }
+        }
+
+        inputs.forEach(i => i.addEventListener("input", updateButtonState));
+
+        button.addEventListener("click", () => {
+            alert("Crate creation started 🎧");
+        });
+    </script>
+}

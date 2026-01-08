@@ -1,0 +1,59 @@
+﻿@{
+    ViewData["Title"] = "Speed Crating";
+    Layout = "_Layout";
+}
+
+<div class="app">
+    <!-- LOGO -->
+    <div class="logo">
+        <div class="logo-line"></div>
+        <div class="logo-shape"></div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+        <div class="title">
+            SPEED CRATING <span>(verb)</span>
+        </div>
+
+        <div class="definition">
+            To rapidly go through crates of music in the pursuit of finding hidden gems.
+        </div>
+
+        <div class="actions">
+            <button class="primary-btn" id="startBtn">
+                GO SPEED CRATING
+            </button>
+
+            <button class="secondary-btn" id="loginBtn">
+                LOGIN
+            </button>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="bottom-nav">
+        <button class="nav-btn menu" aria-label="Menu"></button>
+        <button class="nav-btn home" aria-label="Home"></button>
+        <button class="nav-btn info" aria-label="Info"></button>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("startBtn").onclick = () =>
+            alert("Speed Crating started 🚀");
+
+        document.getElementById("loginBtn").onclick = () =>
+            alert("Login clicked");
+
+        document.querySelector(".menu").onclick = () =>
+            alert("Menu");
+
+        document.querySelector(".home").onclick = () =>
+            alert("Home");
+
+        document.querySelector(".info").onclick = () =>
+            alert("Info");
+    </script>
+}

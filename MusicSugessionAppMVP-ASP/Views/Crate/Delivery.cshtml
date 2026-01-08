@@ -1,0 +1,47 @@
+﻿@{
+    ViewData["Title"] = "Before You Continue";
+    Layout = "_Layout";
+}
+
+<div class="app app-black">
+
+    <div class="content">
+        <div class="page-title">
+            BEFORE YOU CONTINUE SPEED CRATING…
+        </div>
+
+        <div class="page-description">
+            …we need to know where you want us to send your list of liked tracks.
+        </div>
+
+        <div class="option-buttons">
+            <button class="option-btn">Send list to my email</button>
+            <button class="option-btn">Send to my Spotify profile</button>
+            <button class="option-btn">Send to my Apple Music profile</button>
+            <button class="option-btn">Send to my Deezer profile</button>
+            <button class="option-btn">Send to my SoundCloud profile</button>
+        </div>
+
+        <button class="skip-btn">Skip</button>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-btn menu" aria-label="Menu"></button>
+        <button class="nav-btn home" aria-label="Home"></button>
+        <button class="nav-btn info" aria-label="Info"></button>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll(".option-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                alert(btn.innerText);
+            });
+        });
+
+        document.querySelector(".skip-btn").addEventListener("click", () => {
+            alert("Skipped");
+        });
+    </script>
+}
