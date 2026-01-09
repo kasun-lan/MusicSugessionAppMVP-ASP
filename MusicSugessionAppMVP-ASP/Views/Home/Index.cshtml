@@ -1,59 +1,92 @@
 ﻿@{
-    ViewData["Title"] = "Speed Crating";
-    Layout = "_Layout";
+    ViewData["Title"] = "Home";
 }
 
-<div class="app">
-    <!-- LOGO -->
-    <div class="logo">
-        <div class="logo-line"></div>
-        <div class="logo-shape"></div>
+
+@section Head {
+    <link rel="stylesheet" href="~/css/login.css" />
+
+    <style>
+        .grayscale-bg {
+            background-image: url('./images/start-bg.png');
+            filter: grayscale(100%);
+        }
+    </style>
+
+}
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900">
+
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <!-- Background -->
+    <div class="absolute inset-0 bg-cover bg-center grayscale-bg">
+        <div class="absolute inset-0 bg-black/50"></div>
     </div>
 
-    <!-- CONTENT -->
-    <div class="content">
-        <div class="title">
-            SPEED CRATING <span>(verb)</span>
+    <!-- Content -->
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        <!-- Logo -->
+        <div class="flex justify-center mb-8">
+            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                <path d="M25 55L30 25L50 35L45 65L25 55Z"
+                      fill="#B4FF00"
+                      class="drop-shadow-[0_0_20px_rgba(180,255,0,0.6)]" />
+                <rect x="28" y="30" width="18" height="12" rx="2"
+                      fill="#1A1A1A"
+                      transform="rotate(15 28 30)" />
+            </svg>
         </div>
 
-        <div class="definition">
-            To rapidly go through crates of music in the pursuit of finding hidden gems.
+        <!-- Main Text -->
+        <div class="flex-1 flex flex-col justify-center text-center space-y-6">
+            <div>
+                <h1 class="text-white text-3xl font-bold mb-2">
+                    SPEED CRATING
+                    <span class="text-sm font-normal text-gray-400">(verb)</span>
+                </h1>
+                <p class="text-gray-400 text-sm mb-6">speed | krit | ing</p>
+            </div>
+
+            <p class="text-white text-base leading-relaxed max-w-xs mx-auto">
+                To rapidly go through crates of music in the pursuit of finding hidden gems.
+            </p>
+
+            <!-- Buttons -->
+            <div class="space-y-4 pt-4">
+                <button class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                               text-black font-bold py-4 px-6 rounded
+                               transition-colors shadow-[0_0_30px_rgba(180,255,0,0.3)]">
+                    GO SPEED CRATING
+                </button>
+
+                @if (ViewBag.IsAuthenticated != true)
+                {
+                    <a asp-controller="Home"
+                       asp-action="Login"
+                       class="w-full border-2 border-white/30 hover:border-white/50
+              text-white font-medium py-4 px-6 rounded transition-colors block text-center">
+                        LOGIN
+                    </a>
+                }
+                else
+                {
+                    <div class="text-white/70 text-sm text-center">
+                        Welcome back 👋
+                    </div>
+                }
+
+
+            </div>
         </div>
 
-        <div class="actions">
-            <button class="primary-btn" id="startBtn">
-                GO SPEED CRATING
-            </button>
-
-            <button class="secondary-btn" id="loginBtn">
-                LOGIN
-            </button>
+        <!-- Bottom Navigation -->
+        <div class="flex justify-around items-center pt-8 text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
         </div>
-    </div>
-
-    <!-- BOTTOM NAV -->
-    <div class="bottom-nav">
-        <button class="nav-btn menu" aria-label="Menu"></button>
-        <button class="nav-btn home" aria-label="Home"></button>
-        <button class="nav-btn info" aria-label="Info"></button>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        document.getElementById("startBtn").onclick = () =>
-            alert("Speed Crating started 🚀");
-
-        document.getElementById("loginBtn").onclick = () =>
-            alert("Login clicked");
-
-        document.querySelector(".menu").onclick = () =>
-            alert("Menu");
-
-        document.querySelector(".home").onclick = () =>
-            alert("Home");
-
-        document.querySelector(".info").onclick = () =>
-            alert("Info");
-    </script>
-}

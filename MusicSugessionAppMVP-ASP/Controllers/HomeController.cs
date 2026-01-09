@@ -18,6 +18,51 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             return View();
         }
 
+
+        public IActionResult Login(string? returnUrl = null)
+        {
+            if (HttpContext.Session.GetString("IsAuthenticated") == "true")
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
+        }
+
+
+
+      
+
+
+        [HttpPost]
+        public IActionResult Login(string username, string password,string? returnUrl)
+        {
+            if (HttpContext.Session.GetString("IsAuthenticated") == "true")
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+
+            // Simulated authentication
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                HttpContext.Session.SetString("UserName", username);
+                HttpContext.Session.SetString("IsAuthenticated", "true");
+
+                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+
+                return RedirectToAction("Index", "Home");
+            }
+
+            ViewBag.Error = "Invalid credentials";
+            return View();
+        }
+
+
         public IActionResult Privacy()
         {
             return View();

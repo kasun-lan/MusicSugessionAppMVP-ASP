@@ -1,0 +1,124 @@
+﻿@{
+    ViewData["Title"] = "Sources";
+}
+
+
+
+
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900">
+
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <!-- Content -->
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        <!-- Logo -->
+        <div class="flex justify-center mb-8">
+            <svg width="60" height="60" viewBox="0 0 80 80" fill="none">
+                <path d="M25 55L30 25L50 35L45 65L25 55Z"
+                      fill="#B4FF00"
+                      class="drop-shadow-[0_0_20px_rgba(180,255,0,0.6)]" />
+                <rect x="28" y="30" width="18" height="12" rx="2"
+                      fill="#1A1A1A"
+                      transform="rotate(15 28 30)" />
+            </svg>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+
+            <div class="mb-8">
+                <h2 class="text-white text-xl font-bold mb-3">
+                    CRATE SOURCE
+                </h2>
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    To fill your crate with the right music, you need to name three artists whose genres the crate will be based on.
+                </p>
+            </div>
+
+            <form asp-action="CreateCrate" method="post">
+                <!-- Artist Inputs -->
+                <div class="space-y-4 mb-8">
+                    <input id="artist1"
+                           name="Artist1"
+                           type="text"
+                           placeholder="Artist 1"
+                           class="w-full bg-transparent border-2 border-white/30
+                               focus:border-[#B4FF00] text-white
+                               placeholder-gray-500 py-3 px-4 rounded
+                               outline-none transition-colors" />
+
+                    <input id="artist2"
+                           name="Artist2"
+                           type="text"
+                           placeholder="Artist 2"
+                           class="w-full bg-transparent border-2 border-white/30
+                               focus:border-[#B4FF00] text-white
+                               placeholder-gray-500 py-3 px-4 rounded
+                               outline-none transition-colors" />
+
+                    <input id="artist3"
+                           name="Artist3"
+                           type="text"
+                           placeholder="Artist 3"
+                           class="w-full bg-transparent border-2 border-white/30
+                               focus:border-[#B4FF00] text-white
+                               placeholder-gray-500 py-3 px-4 rounded
+                               outline-none transition-colors" />
+
+                    <!-- Create Crate Button -->
+                    <button id="createCrateBtn"
+                            type="submit"
+                            disabled
+                            class="w-full bg-[#B4FF00] text-black font-bold py-4 px-6 rounded
+                           transition-colors shadow-[0_0_30px_rgba(180,255,0,0.3)]
+                           opacity-30 cursor-not-allowed">
+                        Create crate
+                    </button>
+                </div>
+            </form>
+            
+
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="flex justify-around items-center pt-8 text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+
+    <script>
+        const artist1 = document.getElementById('artist1');
+        const artist2 = document.getElementById('artist2');
+        const artist3 = document.getElementById('artist3');
+        const button = document.getElementById('createCrateBtn');
+
+        function validateInputs() {
+            const allFilled =
+                artist1.value.trim() &&
+                artist2.value.trim() &&
+                artist3.value.trim();
+
+            if (allFilled) {
+                button.disabled = false;
+                button.classList.remove('opacity-30', 'cursor-not-allowed');
+                button.classList.add('hover:bg-[#A0E600]');
+            } else {
+                button.disabled = true;
+                button.classList.add('opacity-30', 'cursor-not-allowed');
+                button.classList.remove('hover:bg-[#A0E600]');
+            }
+        }
+
+        artist1.addEventListener('input', validateInputs);
+        artist2.addEventListener('input', validateInputs);
+        artist3.addEventListener('input', validateInputs);
+    </script>
+}

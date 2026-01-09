@@ -6,11 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <link rel="stylesheet" href="~/css/site.css" />
-</head>
 
-<body>
-    @RenderBody()
+    @RenderSection("Head", required: false)
+</head>
+<body class="bg-black">
+
+    <div class="min-h-screen bg-black flex items-center justify-center p-4">
+        @RenderBody()
+    </div>
 
     @RenderSection("Scripts", required: false)
 </body>
 </html>
+
