@@ -65,6 +65,8 @@
                 <p id="track-album" class="text-white/40 text-sm italic"></p>
             </div>
         </div>
+        <audio id="preview-audio" preload="none"></audio>
+
 
         <!-- Bottom nav -->
         <div class="flex justify-around items-center text-[#B4FF00] text-2xl">
@@ -373,6 +375,27 @@
         const endSessionEmail = document.getElementById('end-session-email');
         const endSessionStreaming = document.getElementById('end-session-streaming');
 
+        const audioEl = document.getElementById('preview-audio');
+        let hasUserInteracted = false;
+
+        function markUserInteraction() {
+            hasUserInteracted = true;
+        }
+
+        document.addEventListener('keydown', markUserInteraction, { once: true });
+        document.addEventListener('click', markUserInteraction, { once: true });
+        document.addEventListener('touchstart', markUserInteraction, { once: true });
+
+        function stopPreview() {
+            if (!audioEl) return;
+
+            audioEl.pause();
+            audioEl.currentTime = 0;
+            audioEl.src = '';
+        }
+
+
+
         endSessionBtn.addEventListener('click', () => {
             endSessionOverlay.classList.remove('hidden');
             endSessionOverlay.classList.add('flex');
@@ -417,7 +440,10 @@
 
 
         function renderTrack(track) {
+            stopPreview();
+
             currentTrack = track;
+
             titleEl.textContent = track.name || '';
             artistEl.textContent = track.artistName || '';
             albumEl.textContent = track.albumName || '';
@@ -428,7 +454,19 @@
             } else {
                 trackImageEl.classList.add('hidden');
             }
+
+            // 🔊 Auto-play preview if available and allowed
+            if (track.previewUrl && hasUserInteracted) {
+                audioEl.src = track.previewUrl;
+                audioEl.volume = 1.0;
+
+                audioEl.play().catch(err => {
+                    // Autoplay may still fail silently on some browsers
+                    console.debug('Preview autoplay blocked:', err);
+                });
+            }
         }
+
 
         async function loadNextTrack() {
             try {
@@ -474,6 +512,8 @@
             const el = type === 'like' ? likeHeart : dislikeHeart;
             el.classList.remove('hidden');
             el.classList.add('flex');
+
+            stopPreview();
 
             // If liked, call the LikeTrack endpoint
             if (type === 'like' && currentTrack) {
@@ -552,6 +592,7 @@
         document.addEventListener('keydown', e => {
             if (!currentTrack) return; // Don't allow keyboard input while loading
 
+            
             if (e.key === 'ArrowRight') showHeart('like');
             if (e.key === 'ArrowLeft') showHeart('dislike');
         });
