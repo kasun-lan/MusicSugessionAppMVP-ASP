@@ -10,6 +10,9 @@
         public HashSet<string> SelectedGenres { get; set; } =
             new(StringComparer.OrdinalIgnoreCase);
 
+        public List<TrackInfo> LikedTracks { get; } = new();
+        public List<TrackInfo> SkippedTracks { get; } = new();
+
         public bool IsWarm { get; set; } // equivalent to "review window opened"
     }
 }

@@ -9,6 +9,8 @@ namespace MusicSugessionAppMVP_ASP.Controllers
     public class SourcesController : Controller
     {
         static ConcurrentDictionary<string, CrateSessionState> _crates = new();
+        private const int PrimaryRefillThreshold = 3;
+        private const int PrimaryRefillBatchSize = 5;
 
 
         public IActionResult Index()
@@ -247,6 +249,21 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                     return NoContent();
 
                 var track = crate.PrimaryQueue.Dequeue();
+                // 🔥 REFILL LOGIC (MISSING BEFORE)
+                if (crate.PrimaryQueue.Count <= PrimaryRefillThreshold &&
+                    crate.BackupQueue.Count > 0)
+                {
+                    string? lastArtist =
+                        crate.PrimaryQueue.LastOrDefault()?.ArtistName;
+
+                    var refill = TakeSpacedTracksFromBackup(
+                        crate.BackupQueue,
+                        PrimaryRefillBatchSize,
+                        lastArtist);
+
+                    foreach (var t in refill)
+                        crate.PrimaryQueue.Enqueue(t);
+                }
                 return Json(track);
             }
         }
@@ -260,12 +277,129 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             if (!_crates.TryGetValue(sessionId, out var crate))
                 return Ok();
 
-            //_ = Task.Run(() =>
-            //    ExpandFromLikedTrackAsync(sessionId, track)
-            //);
+            lock (crate)
+            {
+                if (!crate.LikedTracks.Any(t =>
+                    string.Equals(t.Id, track.Id, StringComparison.OrdinalIgnoreCase)))
+                {
+                    crate.LikedTracks.Add(track);
+                }
+            }
+
+            // 🔥 Expand discovery graph asynchronously
+            _ = Task.Run(() =>
+                ExpandFromLikedTrackAsync(sessionId, track)
+            );
 
             return Ok();
         }
+
+        private async Task ExpandFromLikedTrackAsync(
+    string sessionId,
+    TrackInfo likedTrack)
+        {
+            if (!_crates.TryGetValue(sessionId, out var crate))
+                return;
+
+            var deezer = new DeezerService();
+            var spotify = new SpotifyService(
+                "dbb1ff804d89446f8c744d200b20e2d8",
+                "57681c65030c4ea49e563f2ca643d1b4");
+
+            var musicBrainz = new MusicBrainzService();
+            var aggregator = new SimilarArtistAggregationService(deezer);
+
+            try
+            {
+                var relatedArtists =
+                    await aggregator.GetSimilarArtistsWithAtLeastOneTrackAsync(
+                        likedTrack.ArtistName, 10);
+
+                foreach (var candidate in relatedArtists)
+                {
+                    // 🔒 Deduplicate artists globally
+                    if (!crate.SeenArtists.Add(candidate.Name))
+                        continue;
+
+                    await EnrichArtist(candidate, spotify);
+
+                    if (!await ArtistValdation(
+                            crate.SelectedGenres,
+                            candidate,
+                            new List<ArtistInfo>(), // seed artists already filtered earlier
+                            spotify,
+                            deezer,
+                            musicBrainz))
+                        continue;
+
+                    var shuffled = candidate.Tracks
+                        .OrderBy(_ => Random.Shared.Next())
+                        .ToList();
+
+                    if (shuffled.Count == 0)
+                        continue;
+
+                    lock (crate)
+                    {
+                        // Primary → immediate review
+                        crate.PrimaryQueue.Enqueue(shuffled[0]);
+
+                        // Backup → refill later
+                        foreach (var t in shuffled.Skip(1))
+                            crate.BackupQueue.Add(t);
+
+                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 3)
+                            crate.IsWarm = true;
+                    }
+
+                    await Task.Delay(50);
+                }
+            }
+            catch
+            {
+                // intentionally swallowed to preserve pipeline continuity
+            }
+        }
+
+
+        private static List<TrackInfo> TakeSpacedTracksFromBackup(
+    List<TrackInfo> backup,
+    int takeCount,
+    string? lastArtistInPrimary = null)
+        {
+            var artistBuckets = backup
+                .GroupBy(t => t.ArtistName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => new Queue<TrackInfo>(g));
+
+            var result = new List<TrackInfo>();
+            string? lastArtist = lastArtistInPrimary;
+
+            while (result.Count < takeCount && artistBuckets.Count > 0)
+            {
+                var orderedArtists = artistBuckets
+                    .OrderByDescending(kv => kv.Value.Count)
+                    .Select(kv => kv.Key)
+                    .ToList();
+
+                var nextArtist =
+                    orderedArtists.FirstOrDefault(a =>
+                        !string.Equals(a, lastArtist, StringComparison.OrdinalIgnoreCase))
+                    ?? orderedArtists.First();
+
+                var track = artistBuckets[nextArtist].Dequeue();
+                result.Add(track);
+                lastArtist = nextArtist;
+
+                if (artistBuckets[nextArtist].Count == 0)
+                    artistBuckets.Remove(nextArtist);
+            }
+
+            foreach (var track in result)
+                backup.Remove(track);
+
+            return result;
+        }
+
 
 
         private async Task<ArtistInfo?> ResolveArtistAsync(
