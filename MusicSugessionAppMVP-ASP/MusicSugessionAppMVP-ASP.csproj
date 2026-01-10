@@ -7,4 +7,9 @@
     <RootNamespace>MusicSugessionAppMVP_ASP</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Models\RecommendationSession.cs" />
+    <Compile Remove="Services\RecommendationService.cs" />
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,694 @@
+﻿@{
+    ViewData["Title"] = "Crate";
+}
+
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900"
+     id="crating-area">
+
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <!-- Heart animations -->
+    <div id="like-heart" class="absolute inset-0 z-50 hidden items-center justify-center pointer-events-none">
+        <div class="animate-[ping_0.8s_ease-out]">
+            <div class="text-[#B4FF00] text-[120px] drop-shadow-[0_0_40px_rgba(180,255,0,0.8)]">♥</div>
+        </div>
+    </div>
+
+    <div id="dislike-heart"
+         class="absolute inset-0 z-50 hidden items-center justify-center pointer-events-none">
+        <div class="animate-[ping_0.8s_ease-out] rotate-180">
+            <div class="text-white text-[120px] drop-shadow-[0_0_40px_rgba(255,255,255,0.6)]">♡</div>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="relative h-full flex flex-col justify-between p-6 pt-16 pb-20">
+
+        <!-- Top bar -->
+        <div class="flex justify-between items-center mb-4">
+            <div class="text-[#B4FF00] text-xl">◆</div>
+            <button id="end-session-btn"
+                    class="w-8 h-8 rounded-full bg-[#B4FF00] flex items-center justify-center">
+                <div class="w-3 h-3 bg-black"></div>
+            </button>
+
+        </div>
+
+        <!-- Crate source -->
+        <div class="mb-4">
+            <p class="text-white/60 text-xs mb-1">Crate source:</p>
+            <p class="text-white text-sm truncate">
+                Artist One, Artist Two, Artist Three
+            </p>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loading-state" class="flex-1 flex flex-col items-center justify-center mb-6">
+            <div class="text-white/60 text-sm mb-4 text-center">
+                Please wait, tracks are being prepared...
+            </div>
+            <div class="w-8 h-8 border-4 border-[#B4FF00] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        <!-- Album cover -->
+        <div id="track-content" class="flex-1 flex flex-col items-center justify-center mb-6 hidden">
+            <div class="w-[280px] h-[280px] rounded-lg bg-gray-800 shadow-2xl mb-6 overflow-hidden">
+                <img id="track-image" src="" alt="Album cover" class="w-full h-full object-cover hidden" />
+            </div>
+
+            <!-- Track info (NOW BELOW IMAGE) -->
+            <div class="text-center mb-8">
+                <h2 id="track-title" class="text-white text-lg font-bold mb-1"></h2>
+                <p id="track-artist" class="text-white/60 text-sm"></p>
+                <p id="track-album" class="text-white/40 text-sm italic"></p>
+            </div>
+        </div>
+
+        <!-- Bottom nav -->
+        <div class="flex justify-around items-center text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+
+    <!-- Export Overlay -->
+    <div id="export-overlay"
+         class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
+
+        <!-- Logo -->
+        <div class="flex justify-center mb-6">
+            <div class="text-[#B4FF00] text-4xl">◆</div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="flex-1 flex flex-col">
+
+            <!-- MODE 1: Options -->
+            <div id="export-options">
+                <h3 class="text-white font-bold text-base mb-4 uppercase">
+                    Before you continue speed crating...
+                </h3>
+
+                <p class="text-white text-sm mb-8">
+                    ...we need to know where you want us to send your list of liked tracks.
+                </p>
+
+                <div class="space-y-3">
+                    <button id="email-option" class="w-full border-2 border-white/30 hover:border-white/50
+                               text-white text-sm py-3 px-4 rounded transition-colors">
+                        Send list to my email
+                    </button>
+
+                    <button id="spotify-option" class="w-full border-2 border-white/30 hover:border-white/50
+               text-white text-sm py-3 px-4 rounded transition-colors">
+                        Send to my Spotify profile
+                    </button>
+
+                    <button class="export-close w-full border-2 border-white/30 hover:border-white/50
+                               text-white text-sm py-3 px-4 rounded transition-colors">
+                        Send to my Apple Music profile
+                    </button>
+
+                    <button class="export-close w-full border-2 border-white/30 hover:border-white/50
+                               text-white text-sm py-3 px-4 rounded transition-colors">
+                        Send to my Deezer profile
+                    </button>
+
+                    <button class="export-close w-full border-2 border-white/30 hover:border-white/50
+                               text-white text-sm py-3 px-4 rounded transition-colors">
+                        Send to my SoundCloud profile
+                    </button>
+                </div>
+            </div>
+
+            <!-- MODE 2: Email input -->
+            <div id="email-form" class="hidden">
+                <h3 class="text-white font-bold text-base mb-4 uppercase">
+                    Send playlist to your email
+                </h3>
+
+                <input id="email-input" type="email" placeholder="Enter your email" class="w-full bg-transparent border-2 border-white/30
+                       focus:border-[#B4FF00] text-white
+                       placeholder-gray-500 py-3 px-4 rounded
+                       outline-none transition-colors mb-4" />
+
+                <button id="send-email" disabled class="w-full bg-[#B4FF00] text-black font-bold py-3 px-4 rounded
+                       transition-colors opacity-30 cursor-not-allowed mb-3">
+                    Send playlist
+                </button>
+
+                <button id="back-to-options" class="w-full border-2 border-white/30 hover:border-white/50
+                           text-white text-sm py-3 px-4 rounded transition-colors">
+                    Back
+                </button>
+            </div>
+
+            <!-- MODE 3: Success -->
+            <div id="email-success" class="hidden">
+                <p class="text-[#B4FF00] text-sm mb-6 text-center">
+                    Email successfully registered
+                </p>
+
+                <button id="continue-crating" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+               text-black font-bold py-3 px-4 rounded transition-colors mb-4">
+                    Continue speed crating
+                </button>
+
+                <p class="text-white/40 text-xs text-center">
+                    By entering your email address you agree to our
+                    <button id="open-terms" class="underline text-white/60 hover:text-white">
+                        terms &amp; conditions
+                    </button>
+
+                </p>
+            </div>
+
+            <!-- MODE 4: Terms & Conditions -->
+            <div id="terms-overlay" class="hidden flex-1 flex flex-col">
+
+                <!-- Header -->
+                <div class="flex items-center mb-4">
+                    <button id="close-terms" class="text-[#B4FF00] text-xl mr-3">
+                        ←
+                    </button>
+                    <h3 class="text-white font-bold text-base uppercase">
+                        Terms & Conditions
+                    </h3>
+                </div>
+
+                <!-- Scrollable content -->
+                <div class="flex-1 overflow-y-auto text-white/70 text-sm leading-relaxed pr-2">
+                    <p class="mb-4">
+                        Sed ut perspiciatis unde omnis iste natus error sit voluptatem
+                        accusantium doloremque laudantium, totam rem aperiam, eaque ipsa
+                        quae ab illo inventore veritatis et quasi architecto beatae vitae
+                        dicta sunt explicabo.
+                    </p>
+
+                    <p class="mb-4">
+                        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit
+                        aut fugit, sed quia consequuntur magni dolores eos qui ratione
+                        voluptatem sequi nesciunt.
+                    </p>
+
+                    <p class="mb-4">
+                        Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet,
+                        consectetur, adipisci velit, sed quia non numquam eius modi tempora
+                        incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+                    </p>
+
+                    <p class="mb-4">
+                        Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis
+                        suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.
+                    </p>
+                </div>
+            </div>
+
+            <!-- MODE: Spotify Connect -->
+            <div id="spotify-connect" class="hidden">
+                <h3 class="text-white font-bold text-base mb-4 uppercase">
+                    Before you continue speed crating...
+                </h3>
+
+                <p class="text-white text-sm mb-8">
+                    ...we need to know where you want us to send your list of liked tracks.
+                </p>
+
+                <button id="connect-spotify" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+               text-black font-bold py-3 px-4 rounded transition-colors mb-4">
+                    Connect with Spotify
+                </button>
+
+                <p class="text-white/40 text-xs text-center">
+                    By connecting you agree to our
+                    <button id="spotify-terms" class="underline text-white/60 hover:text-white">
+                        terms &amp; conditions
+                    </button>
+                </p>
+            </div>
+
+            <!-- MODE: Spotify Success -->
+            <div id="spotify-success" class="hidden text-center">
+                <p class="text-[#B4FF00] text-sm mb-6">
+                    Connection successful
+                </p>
+
+                <button id="continue-from-spotify" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+               text-black font-bold py-3 px-4 rounded transition-colors mb-4">
+                    Continue speed crating
+                </button>
+            </div>
+
+
+            <!-- Skip -->
+            <button id="skip-export" class="text-white/60 hover:text-white text-sm mt-8 py-2 transition-colors">
+                Skip
+            </button>
+        </div>
+
+
+
+        <!-- END SESSION RESULT: EMAIL -->
+        <div id="end-session-email"
+             class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
+
+            <div>
+                <p class="text-[#B4FF00] text-sm mb-6">
+                    Your list has been sent to your email
+                </p>
+
+                <p class="text-white/60 text-sm mb-8">
+                    RECOMMENDATION: SAVE YOUR LIST
+                </p>
+
+                <p class="text-white/40 text-sm mb-8">
+                    To fill your crate with even better music next time,
+                    we recommend you to create a profile and save your list.
+                </p>
+
+                <button class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                       text-black font-bold py-3 px-4 rounded transition-colors">
+                    Save list to your Speed Crating profile
+                </button>
+            </div>
+        </div>
+
+        <!-- END SESSION RESULT: STREAMING -->
+        <div id="end-session-streaming"
+             class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
+
+            <div>
+                <p class="text-[#B4FF00] text-sm mb-6">
+                    Your list has been sent to your Spotify profile
+                </p>
+
+                <p class="text-white/60 text-sm mb-8">
+                    You’ll find it in your playlist library
+                </p>
+
+                <p class="text-white/40 text-sm mb-8">
+                    RECOMMENDATION: SAVE YOUR LIST
+                </p>
+
+                <button class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                       text-black font-bold py-3 px-4 rounded transition-colors">
+                    Save list to your Speed Crating profile
+                </button>
+            </div>
+        </div>
+
+
+        <!-- Bottom Navigation -->
+        <div class="flex justify-around items-center pt-8 text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+
+    <!-- END SESSION CONFIRMATION -->
+    <div id="end-session-overlay"
+         class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
+
+        <div>
+            <h3 class="text-white font-bold text-base mb-4 uppercase">
+                End speed crating session?
+            </h3>
+
+            <p class="text-white text-sm mb-8">
+                All fun must come to an end so does this.
+                Please confirm below that you want to end the session and that we send your list of liked
+                tracks.
+            </p>
+
+            <button id="confirm-end-session" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                       text-black font-bold py-3 px-4 rounded transition-colors mb-4">
+                End this session and send list
+            </button>
+
+            <button id="continue-session" class="w-full border-2 border-white/30 hover:border-white/50
+                       text-white py-3 px-4 rounded transition-colors">
+                Continue session
+            </button>
+        </div>
+
+        <div class="flex justify-around items-center text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        let currentTrack = null;
+        let touchStartX = 0;
+        let swipeCount = 0;
+        let isPolling = false;
+        let pollInterval = null;
+
+        const exportOverlay = document.getElementById('export-overlay');
+        const loadingState = document.getElementById('loading-state');
+        const trackContent = document.getElementById('track-content');
+
+        const titleEl = document.getElementById('track-title');
+        const artistEl = document.getElementById('track-artist');
+        const albumEl = document.getElementById('track-album');
+        const trackImageEl = document.getElementById('track-image');
+        const albumCoverEl = trackImageEl.parentElement;
+
+        const likeHeart = document.getElementById('like-heart');
+        const dislikeHeart = document.getElementById('dislike-heart');
+
+        const termsOverlay = document.getElementById('terms-overlay');
+        const successOverlay = document.getElementById('email-success');
+
+        const endSessionBtn = document.getElementById('end-session-btn');
+        const endSessionOverlay = document.getElementById('end-session-overlay');
+        const endSessionEmail = document.getElementById('end-session-email');
+        const endSessionStreaming = document.getElementById('end-session-streaming');
+
+        endSessionBtn.addEventListener('click', () => {
+            endSessionOverlay.classList.remove('hidden');
+            endSessionOverlay.classList.add('flex');
+        });
+
+        document.getElementById('continue-session')
+            .addEventListener('click', () => {
+                endSessionOverlay.classList.add('hidden');
+                endSessionOverlay.classList.remove('flex');
+            });
+
+        document.getElementById('confirm-end-session')
+            .addEventListener('click', () => {
+                endSessionOverlay.classList.add('hidden');
+
+                if (exportMethod === 'email') {
+                    endSessionEmail.classList.remove('hidden');
+                    endSessionEmail.classList.add('flex');
+                } else {
+                    endSessionStreaming.classList.remove('hidden');
+                    endSessionStreaming.classList.add('flex');
+                }
+            });
+
+
+
+        // Possible values: 'email' or 'streaming'
+        let exportMethod = 'email'; // change to 'streaming' to test other flow
+
+
+        document.getElementById('open-terms')
+            .addEventListener('click', () => {
+                successOverlay.classList.add('hidden');
+                termsOverlay.classList.remove('hidden');
+            });
+
+        document.getElementById('close-terms')
+            .addEventListener('click', () => {
+                termsOverlay.classList.add('hidden');
+                successOverlay.classList.remove('hidden');
+            });
+
+
+        function renderTrack(track) {
+            currentTrack = track;
+            titleEl.textContent = track.name || '';
+            artistEl.textContent = track.artistName || '';
+            albumEl.textContent = track.albumName || '';
+
+            if (track.imageUrl) {
+                trackImageEl.src = track.imageUrl;
+                trackImageEl.classList.remove('hidden');
+            } else {
+                trackImageEl.classList.add('hidden');
+            }
+        }
+
+        async function loadNextTrack() {
+            try {
+                const response = await fetch('/Sources/NextTrack');
+
+                if (response.status === 204) {
+                    // No content - crate not warm yet or no more tracks
+                    return null;
+                }
+
+                if (!response.ok) {
+                    console.error('Failed to load track:', response.status);
+                    return null;
+                }
+
+                const track = await response.json();
+                return track;
+            } catch (error) {
+                console.error('Error loading track:', error);
+                return null;
+            }
+        }
+
+        async function likeTrack(track) {
+            try {
+                const response = await fetch('/Sources/LikeTrack', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(track)
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to like track:', response.status);
+                }
+            } catch (error) {
+                console.error('Error liking track:', error);
+            }
+        }
+
+        async function showHeart(type) {
+            const el = type === 'like' ? likeHeart : dislikeHeart;
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+
+            // If liked, call the LikeTrack endpoint
+            if (type === 'like' && currentTrack) {
+                await likeTrack(currentTrack);
+            }
+
+            setTimeout(async () => {
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+
+                swipeCount++;
+
+                // After 2 swipes, show export overlay
+                if (swipeCount === 2) {
+                    exportOverlay.classList.remove('hidden');
+                    exportOverlay.classList.add('flex');
+                    stopPolling();
+                    return;
+                }
+
+                // Load next track
+                const nextTrack = await loadNextTrack();
+                if (nextTrack) {
+                    renderTrack(nextTrack);
+                } else {
+                    // No more tracks available, show loading and resume polling
+                    loadingState.classList.remove('hidden');
+                    trackContent.classList.add('hidden');
+                    currentTrack = null;
+                    if (!isPolling) {
+                        startPolling();
+                    }
+                }
+            }, 800);
+        }
+
+        function startPolling() {
+            if (isPolling) return;
+
+            isPolling = true;
+            pollInterval = setInterval(async () => {
+                const track = await loadNextTrack();
+                if (track) {
+                    // Crate is warm and has tracks
+                    stopPolling();
+                    loadingState.classList.add('hidden');
+                    trackContent.classList.remove('hidden');
+                    renderTrack(track);
+                }
+            }, 1000); // Poll every second
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+            isPolling = false;
+        }
+
+
+        const area = document.getElementById('crating-area');
+
+        area.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        area.addEventListener('touchend', e => {
+            if (!currentTrack) return; // Don't allow swipes while loading
+
+            const dx = e.changedTouches[0].screenX - touchStartX;
+            if (dx > 100) showHeart('like');
+            if (dx < -100) showHeart('dislike');
+        });
+
+        document.addEventListener('keydown', e => {
+            if (!currentTrack) return; // Don't allow keyboard input while loading
+
+            if (e.key === 'ArrowRight') showHeart('like');
+            if (e.key === 'ArrowLeft') showHeart('dislike');
+        });
+
+        // Start polling for tracks when page loads
+        startPolling();
+
+        const exportOptions = document.getElementById('export-options');
+        const emailForm = document.getElementById('email-form');
+        const emailOptionBtn = document.getElementById('email-option');
+        const emailInput = document.getElementById('email-input');
+        const sendEmailBtn = document.getElementById('send-email');
+        const backBtn = document.getElementById('back-to-options');
+
+        const spotifyOption = document.getElementById('spotify-option');
+        const spotifyConnect = document.getElementById('spotify-connect');
+        const spotifySuccess = document.getElementById('spotify-success');
+        const connectSpotifyBtn = document.getElementById('connect-spotify');
+        const continueFromSpotifyBtn = document.getElementById('continue-from-spotify');
+
+        // Open Spotify connect screen
+        spotifyOption.addEventListener('click', () => {
+            exportOptions.classList.add('hidden');
+            spotifyConnect.classList.remove('hidden');
+        });
+
+        // Simulate Spotify connection
+        connectSpotifyBtn.addEventListener('click', () => {
+            spotifyConnect.classList.add('hidden');
+            spotifySuccess.classList.remove('hidden');
+        });
+
+        // Continue speed crating
+        continueFromSpotifyBtn.addEventListener('click', () => {
+            closeOverlay();
+        });
+
+
+        // Switch to email mode
+        emailOptionBtn.addEventListener('click', () => {
+            exportOptions.classList.add('hidden');
+            emailForm.classList.remove('hidden');
+        });
+
+        // Back to options
+        backBtn.addEventListener('click', () => {
+            emailForm.classList.add('hidden');
+            exportOptions.classList.remove('hidden');
+        });
+
+        // Enable send button only if email is filled
+        emailInput.addEventListener('input', () => {
+            if (emailInput.value.trim()) {
+                sendEmailBtn.disabled = false;
+                sendEmailBtn.classList.remove('opacity-30', 'cursor-not-allowed');
+            } else {
+                sendEmailBtn.disabled = true;
+                sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
+            }
+        });
+
+        function isValidEmail(email) {
+            return /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email);
+    }
+
+    sendEmailBtn.addEventListener('click', () => {
+        const email = emailInput.value.trim();
+
+        if (!isValidEmail(email)) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+
+        // Simulate successful registration
+        exportOptions.classList.add('hidden');
+        emailForm.classList.add('hidden');
+
+        const success = document.getElementById('email-success');
+        success.classList.remove('hidden');
+    });
+
+
+    // Close overlay for non-email options
+    document.querySelectorAll('.export-close').forEach(btn => {
+        btn.addEventListener('click', closeOverlay);
+    });
+
+    // Skip
+    document.getElementById('skip-export').addEventListener('click', closeOverlay);
+
+    async function closeOverlay() {
+        exportOverlay.classList.add('hidden');
+        exportOverlay.classList.remove('flex');
+
+        exportOptions.classList.remove('hidden');
+
+        emailForm.classList.add('hidden');
+        successOverlay.classList.add('hidden');
+        termsOverlay.classList.add('hidden');
+
+        spotifyConnect.classList.add('hidden');
+        spotifySuccess.classList.add('hidden');
+
+        emailInput.value = '';
+        sendEmailBtn.disabled = true;
+        sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
+
+        // Resume track loading
+        if (!currentTrack) {
+            // No current track, start polling
+            if (!isPolling) {
+                startPolling();
+            }
+        } else {
+            // Try to load next track
+            const nextTrack = await loadNextTrack();
+            if (nextTrack) {
+                renderTrack(nextTrack);
+            } else {
+                // No more tracks available yet, show loading and resume polling
+                loadingState.classList.remove('hidden');
+                trackContent.classList.add('hidden');
+                if (!isPolling) {
+                    startPolling();
+                }
+            }
+        }
+    }
+
+
+
+    document.getElementById('continue-crating')
+        .addEventListener('click', () => {
+            closeOverlay();
+        });
+
+
+</script>
+}
+

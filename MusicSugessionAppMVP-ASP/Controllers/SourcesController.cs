@@ -1,12 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MusicSugessionAppMVP_ASP.Models;
 using MusicSugessionAppMVP_ASP.Services;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace MusicSugessionAppMVP_ASP.Controllers
 {
     public class SourcesController : Controller
     {
+        static ConcurrentDictionary<string, CrateSessionState> _crates = new();
+
+
         public IActionResult Index()
         {
             if (HttpContext.Session.GetString("IsAuthenticated") != "true")
@@ -21,6 +25,17 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             return View();
         }
 
+        [HttpGet]
+        public IActionResult Review()
+        {
+            if (HttpContext.Session.GetString("IsAuthenticated") != "true")
+                return RedirectToAction("Login", "Home");
+
+            return View();
+        }
+
+
+
         [HttpPost]
         public async Task<IActionResult> CreateCrate(CreateCrateInputModel input)
         {
@@ -32,6 +47,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
             var spotify = new SpotifyService(clientId, clientSecret);
             var musicBrainzService = new MusicBrainzService();
+            var deezer = new DeezerService();
 
             var resolvedArtists = new List<ArtistInfo>();
 
@@ -47,13 +63,210 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 resolvedArtists.Add(artist);
             }
 
-            HttpContext.Session.SetString(
-                "CrateArtists",
-                JsonSerializer.Serialize(resolvedArtists)
+
+            var sessionId = HttpContext.Session.Id;
+
+            var crate = new CrateSessionState
+            {
+                SelectedGenres = ExtractGenres(resolvedArtists)
+            };
+
+            _crates[sessionId] = crate;
+
+            // 🔥 Fire-and-forget background fill (IMPORTANT)
+            _ = Task.Run(() =>
+                FillCrateAsync(sessionId, resolvedArtists, deezer, spotify, musicBrainzService)
             );
 
-            return RedirectToAction("Review"); // next step
+            // Redirect to review screen (empty initially)
+            return RedirectToAction("Review");
         }
+
+        private HashSet<string> ExtractGenres(List<ArtistInfo> resolvedArtists)
+        {
+            var genres = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var artist in resolvedArtists)
+            {
+                if (artist.Metadata.TryGetValue("genres", out var g) && g != null)
+                {
+                    foreach (var genre in g.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                        genres.Add(genre.Trim());
+                }
+            }
+
+            return genres;
+        }
+
+        private async Task FillCrateAsync(
+    string sessionId,
+    List<ArtistInfo> seedArtists,
+    DeezerService deezer,
+    SpotifyService spotify,
+    MusicBrainzService musicBrainz)
+        {
+            var crate = _crates[sessionId];
+            var aggregator = new SimilarArtistAggregationService(deezer);
+
+            foreach (var seed in seedArtists)
+            {
+                var related =
+                    await aggregator.GetSimilarArtistsWithAtLeastOneTrackAsync(
+                        seed.Name, 30);
+
+                foreach (var candidate in related)
+                {
+                    if (!crate.SeenArtists.Add(candidate.Name))
+                        continue;
+
+                    await EnrichArtist(candidate, spotify);
+
+                    if (!await ArtistValdation(crate.SelectedGenres, candidate,seedArtists, spotify,
+                        deezer,musicBrainz))
+                        continue;
+
+                    var shuffled = candidate.Tracks
+                        .OrderBy(_ => Random.Shared.Next())
+                        .ToList();
+
+                    if (shuffled.Count == 0)
+                        continue;
+
+                    lock (crate)
+                    {
+                        crate.PrimaryQueue.Enqueue(shuffled[0]);
+                        foreach (var t in shuffled.Skip(1))
+                            crate.BackupQueue.Add(t);
+
+                        // equivalent of "open review window"
+                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 3)
+                            crate.IsWarm = true;
+                    }
+
+                    await Task.Delay(50);
+                }
+            }
+        }
+
+        private async Task<bool> ArtistValdation(HashSet<string> selectedGenres,
+            ArtistInfo similarArtist, List<ArtistInfo> selectedArtists,
+            SpotifyService spotifyService,
+            DeezerService deezerService,
+            MusicBrainzService musicBrainzService)
+        {
+            if (selectedArtists.Any(a =>
+                string.Equals(a.Name, similarArtist.Name, StringComparison.OrdinalIgnoreCase)))
+                return false;
+
+            bool hasGenres = await PopulateGenresFromAllSourcesAsync(similarArtist, spotifyService,
+                 deezerService, musicBrainzService);
+            if (!hasGenres)
+                return false;
+
+            if (!similarArtist.Metadata.TryGetValue("genres", out var genreText))
+                return false;
+
+            var candidateGenres = genreText
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(g => g.Trim());
+
+            if (!candidateGenres.Any(g => selectedGenres.Contains(g)))
+                return false;
+
+            return true;
+        }
+
+
+        private async Task<bool> PopulateGenresFromAllSourcesAsync(ArtistInfo artist, SpotifyService spotifyService
+            , DeezerService deezerService, MusicBrainzService musicBrainzService)
+        {
+            var genreSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // --- Spotify ---
+            if (spotifyService != null && !string.IsNullOrWhiteSpace(artist.SpotifyId))
+            {
+                try
+                {
+                    var spotifyArtist = await spotifyService.GetArtistByIdAsync(artist.SpotifyId);
+                    if (spotifyArtist?.Metadata.TryGetValue("genres", out var sg) == true &&
+                        !string.IsNullOrWhiteSpace(sg))
+                    {
+                        foreach (var g in sg.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                            genreSet.Add(g.Trim());
+                    }
+                }
+                catch
+                {
+                    // swallow intentionally (same as original behavior)
+                }
+            }
+
+            // --- MusicBrainz ---
+            if (musicBrainzService != null)
+            {
+                var mbGenres = await musicBrainzService.GetGenresAsync(artist.Name);
+
+                foreach (var g in mbGenres)
+                    if (!string.IsNullOrWhiteSpace(g))
+                        genreSet.Add(g.Trim());
+            }
+
+            if (genreSet.Count > 0)
+            {
+                artist.Metadata["genres"] = string.Join(", ", genreSet);
+                return true;
+            }
+
+            return false;
+        }
+
+        private async Task EnrichArtist(ArtistInfo artist, SpotifyService spotifyService)
+        {
+            if (artist.SpotifyId == null && spotifyService != null)
+            {
+                var match = await spotifyService.GetArtistByNameAsync(artist.Name);
+                if (match != null)
+                {
+                    artist.SpotifyId = match.SpotifyId;
+                    artist.ImageUrl ??= match.ImageUrl;
+                }
+            }
+        }
+
+        [HttpGet]
+        public IActionResult NextTrack()
+        {
+            var sessionId = HttpContext.Session.Id;
+
+            if (!_crates.TryGetValue(sessionId, out var crate))
+                return NoContent();
+
+            lock (crate)
+            {
+                if (!crate.IsWarm || crate.PrimaryQueue.Count == 0)
+                    return NoContent();
+
+                var track = crate.PrimaryQueue.Dequeue();
+                return Json(track);
+            }
+        }
+
+
+        [HttpPost]
+        public IActionResult LikeTrack([FromBody] TrackInfo track)
+        {
+            var sessionId = HttpContext.Session.Id;
+
+            if (!_crates.TryGetValue(sessionId, out var crate))
+                return Ok();
+
+            //_ = Task.Run(() =>
+            //    ExpandFromLikedTrackAsync(sessionId, track)
+            //);
+
+            return Ok();
+        }
+
 
         private async Task<ArtistInfo?> ResolveArtistAsync(
     SpotifyService spotify,MusicBrainzService musicBrainzService,

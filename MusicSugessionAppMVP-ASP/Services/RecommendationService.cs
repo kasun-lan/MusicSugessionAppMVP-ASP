@@ -57,16 +57,16 @@ namespace MusicSugessionAppMVP_ASP.Services
                 .FirstOrDefault(id => !session.ProcessedArtistIds.Contains(id));
         }
 
-        private TrackDto Map(FullTrack track)
-        {
-            return new TrackDto
-            {
-                Id = track.Id,
-                Name = track.Name,
-                Artist = track.Artists.First().Name,
-                PreviewUrl = track.PreviewUrl,
-                ImageUrl = track.Album.Images.FirstOrDefault()?.Url
-            };
-        }
+        //private TrackDto Map(FullTrack track)
+        //{
+        //    return new TrackDto
+        //    {
+        //        Id = track.Id,
+        //        Name = track.Name,
+        //        Artist = track.Artists.First().Name,
+        //        PreviewUrl = track.PreviewUrl,
+        //        ImageUrl = track.Album.Images.FirstOrDefault()?.Url
+        //    };
+        //}
     }
 }
