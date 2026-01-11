@@ -141,7 +141,7 @@
 
                 <button id="send-email" disabled class="w-full bg-[#B4FF00] text-black font-bold py-3 px-4 rounded
                        transition-colors opacity-30 cursor-not-allowed mb-3">
-                    Send playlist
+                    Resigter email
                 </button>
 
                 <button id="back-to-options" class="w-full border-2 border-white/30 hover:border-white/50
@@ -255,30 +255,7 @@
 
 
 
-        <!-- END SESSION RESULT: EMAIL -->
-        <div id="end-session-email"
-             class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
-
-            <div>
-                <p class="text-[#B4FF00] text-sm mb-6">
-                    Your list has been sent to your email
-                </p>
-
-                <p class="text-white/60 text-sm mb-8">
-                    RECOMMENDATION: SAVE YOUR LIST
-                </p>
-
-                <p class="text-white/40 text-sm mb-8">
-                    To fill your crate with even better music next time,
-                    we recommend you to create a profile and save your list.
-                </p>
-
-                <button class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
-                       text-black font-bold py-3 px-4 rounded transition-colors">
-                    Save list to your Speed Crating profile
-                </button>
-            </div>
-        </div>
+        
 
         <!-- END SESSION RESULT: STREAMING -->
         <div id="end-session-streaming"
@@ -311,6 +288,45 @@
             <span>👤</span>
             <span>ℹ</span>
         </div>
+    </div>
+
+
+    <!-- END SESSION RESULT: EMAIL -->
+    <div id="end-session-email"
+         class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
+
+        <div>
+            <!-- COMMON HEADER -->
+            <p class="text-[#B4FF00] text-sm mb-6">
+                Your list has been sent to your email
+            </p>
+
+            <!-- LOGGED-IN VARIANT -->
+            <div id="email-logged-in" class="hidden">
+                <p class="text-[#B4FF00] text-sm mb-8">
+                    Your list has been saved to your Speed Crating profile
+                </p>
+            </div>
+
+            <!-- LOGGED-OUT VARIANT -->
+            <div id="email-logged-out" class="hidden">
+                <p class="text-white/60 text-sm mb-8">
+                    RECOMMENDATION: SAVE YOUR LIST
+                </p>
+
+                <p class="text-white/40 text-sm mb-8">
+                    To fill your crate with even better music next time,
+                    we recommend you to create a profile and save your list.
+                </p>
+
+                <button id="save-list-btn"
+                        class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                       text-black font-bold py-3 px-4 rounded transition-colors">
+                    Save list to your Speed Crating profile
+                </button>
+            </div>
+        </div>
+
     </div>
 
     <!-- END SESSION CONFIRMATION -->
@@ -410,17 +426,91 @@
             });
 
         document.getElementById('confirm-end-session')
-            .addEventListener('click', () => {
+            .addEventListener('click', async () => {
                 endSessionOverlay.classList.add('hidden');
 
-                if (exportMethod === 'email') {
-                    endSessionEmail.classList.remove('hidden');
-                    endSessionEmail.classList.add('flex');
-                } else {
-                    endSessionStreaming.classList.remove('hidden');
-                    endSessionStreaming.classList.add('flex');
+                try {
+                    const response = await fetch('/Sources/EndSession', {
+                        method: 'POST'
+                    });
+
+                    if (!response.ok) {
+                        alert('Failed to end session.');
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    switch (result.status) {
+
+                        case 'no-medium':
+                            // User never chose email / streaming
+                            exportOverlay.classList.remove('hidden');
+                            exportOverlay.classList.add('flex');
+                            break;
+
+                        case 'missing-email':
+                            // Email selected earlier but not registered
+                            exportOverlay.classList.remove('hidden');
+                            exportOverlay.classList.add('flex');
+                            emailForm.classList.remove('hidden');
+                            exportOptions.classList.add('hidden');
+                            break;
+
+                        case 'email-sent':
+                            // 🔴 CRITICAL: close export overlay first
+                            exportOverlay.classList.add('hidden');
+                            exportOverlay.classList.remove('flex');
+
+                            endSessionEmail.classList.remove('hidden');
+                            endSessionEmail.classList.add('flex');
+
+                            const isAuthenticated = await getAuthStatus();
+
+                            if (isAuthenticated) {
+                                document.getElementById('email-logged-in')
+                                    .classList.remove('hidden');
+                                document.getElementById('email-logged-out')
+                                    .classList.add('hidden');
+                            } else {
+                                document.getElementById('email-logged-out')
+                                    .classList.remove('hidden');
+                                document.getElementById('email-logged-in')
+                                    .classList.add('hidden');
+                            }
+
+
+                            break;
+
+                        case 'spotify-sent':
+                        case 'streaming-sent':
+                            endSessionStreaming.classList.remove('hidden');
+                            endSessionStreaming.classList.add('flex');
+                            break;
+
+                        default:
+                            alert('Unsupported export method.');
+                            break;
+                    }
+
+                } catch (err) {
+                    console.error('End session failed:', err);
+                    alert('Network error while ending session.');
                 }
             });
+
+
+        async function getAuthStatus() {
+            try {
+                const response = await fetch('/Home/AuthStatus');
+                if (!response.ok) return false;
+
+                const data = await response.json();
+                return data.isAuthenticated === true;
+            } catch {
+                return false;
+            }
+        }
 
 
 
@@ -529,7 +619,7 @@
                 swipeCount++;
 
                 // After 2 swipes, show export overlay
-                if (swipeCount === 2) {
+                if (swipeCount === 5) {
                     exportOverlay.classList.remove('hidden');
                     exportOverlay.classList.add('flex');
                     stopPolling();
@@ -594,7 +684,7 @@
         document.addEventListener('keydown', e => {
             if (!currentTrack) return; // Don't allow keyboard input while loading
 
-            
+
             if (e.key === 'ArrowRight') showHeart('like');
             if (e.key === 'ArrowLeft') showHeart('dislike');
         });
@@ -658,80 +748,95 @@
 
         function isValidEmail(email) {
             return /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email);
-    }
-
-    sendEmailBtn.addEventListener('click', () => {
-        const email = emailInput.value.trim();
-
-        if (!isValidEmail(email)) {
-            alert('Please enter a valid email address.');
-            return;
         }
 
-        // Simulate successful registration
-        exportOptions.classList.add('hidden');
-        emailForm.classList.add('hidden');
+        sendEmailBtn.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
 
-        const success = document.getElementById('email-success');
-        success.classList.remove('hidden');
-    });
-
-
-    // Close overlay for non-email options
-    document.querySelectorAll('.export-close').forEach(btn => {
-        btn.addEventListener('click', closeOverlay);
-    });
-
-    // Skip
-    document.getElementById('skip-export').addEventListener('click', closeOverlay);
-
-    async function closeOverlay() {
-        exportOverlay.classList.add('hidden');
-        exportOverlay.classList.remove('flex');
-
-        exportOptions.classList.remove('hidden');
-
-        emailForm.classList.add('hidden');
-        successOverlay.classList.add('hidden');
-        termsOverlay.classList.add('hidden');
-
-        spotifyConnect.classList.add('hidden');
-        spotifySuccess.classList.add('hidden');
-
-        emailInput.value = '';
-        sendEmailBtn.disabled = true;
-        sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
-
-        // Resume track loading
-        if (!currentTrack) {
-            // No current track, start polling
-            if (!isPolling) {
-                startPolling();
+            if (!isValidEmail(email)) {
+                alert('Please enter a valid email address.');
+                return;
             }
-        } else {
-            // Try to load next track
-            const nextTrack = await loadNextTrack();
-            if (nextTrack) {
-                renderTrack(nextTrack);
-            } else {
-                // No more tracks available yet, show loading and resume polling
-                loadingState.classList.remove('hidden');
-                trackContent.classList.add('hidden');
-                if (!isPolling) {
-                    startPolling();
+
+            try {
+                const response = await fetch('/Sources/RegisterEmail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                if (!response.ok) {
+                    alert('Failed to register email.');
+                    return;
                 }
+
+                exportOptions.classList.add('hidden');
+                emailForm.classList.add('hidden');
+                successOverlay.classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Email registration failed:', err);
+                alert('Network error while registering email.');
             }
-        }
-    }
-
-
-
-    document.getElementById('continue-crating')
-        .addEventListener('click', () => {
-            closeOverlay();
         });
 
 
-</script>
+
+        // Close overlay for non-email options
+        document.querySelectorAll('.export-close').forEach(btn => {
+            btn.addEventListener('click', closeOverlay);
+        });
+
+        // Skip
+        document.getElementById('skip-export').addEventListener('click', closeOverlay);
+
+        async function closeOverlay() {
+            exportOverlay.classList.add('hidden');
+            exportOverlay.classList.remove('flex');
+
+            exportOptions.classList.remove('hidden');
+
+            emailForm.classList.add('hidden');
+            successOverlay.classList.add('hidden');
+            termsOverlay.classList.add('hidden');
+
+            spotifyConnect.classList.add('hidden');
+            spotifySuccess.classList.add('hidden');
+
+            emailInput.value = '';
+            sendEmailBtn.disabled = true;
+            sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
+
+            // Resume track loading
+            if (!currentTrack) {
+                // No current track, start polling
+                if (!isPolling) {
+                    startPolling();
+                }
+            } else {
+                // Try to load next track
+                const nextTrack = await loadNextTrack();
+                if (nextTrack) {
+                    renderTrack(nextTrack);
+                } else {
+                    // No more tracks available yet, show loading and resume polling
+                    loadingState.classList.remove('hidden');
+                    trackContent.classList.add('hidden');
+                    if (!isPolling) {
+                        startPolling();
+                    }
+                }
+            }
+        }
+
+
+
+        document.getElementById('continue-crating')
+            .addEventListener('click', () => {
+                closeOverlay();
+            });
+
+
+    </script>
 }
 

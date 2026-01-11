@@ -27,6 +27,9 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             return View();
         }
 
+
+
+
         [HttpGet]
         public IActionResult Review()
         {
@@ -34,6 +37,50 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 return RedirectToAction("Login", "Home");
 
             return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EndSession()
+        {
+            var sessionId = HttpContext.Session.Id;
+
+            if (!_crates.TryGetValue(sessionId, out var crate))
+                return BadRequest();
+
+            // 🔒 Guard: no export medium selected
+            if (crate.SelectedExportMedium == ExportMedium.None)
+                return Json(new { status = "no-medium" });
+
+            // 🔒 Guard: email export requires email
+            if (crate.SelectedExportMedium == ExportMedium.Email)
+            {
+                if (string.IsNullOrWhiteSpace(crate.RegisteredEmail))
+                    return Json(new { status = "missing-email" });
+                try
+                {
+                    if (!crate.EmailSent)
+                    {
+                        var emailService = new FakeEmailService();
+
+                        await emailService.SendPlaylistAsync(
+                            crate.RegisteredEmail,
+                            crate.LikedTracks);
+
+                        lock (crate)
+                        {
+                            crate.EmailSent = true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                }
+
+                return Json(new { status = "email-sent" });
+            }
+
+            // Future: Spotify / Apple Music
+            return Json(new { status = "unsupported" });
         }
 
 
@@ -234,6 +281,33 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 }
             }
         }
+
+        [HttpPost]
+        public IActionResult RegisterEmail([FromBody] RegisterEmailInputModel input)
+        {
+            if (string.IsNullOrWhiteSpace(input.Email))
+                return BadRequest("Email is required.");
+
+            var sessionId = HttpContext.Session.Id;
+
+            if (!_crates.TryGetValue(sessionId, out var crate))
+                return BadRequest("Crate session not found.");
+
+            lock (crate)
+            {
+                // Prevent re-registration
+                if (!string.IsNullOrWhiteSpace(crate.RegisteredEmail))
+                    return Ok();
+
+                crate.RegisteredEmail = input.Email.Trim();
+                crate.EmailRegisteredAtUtc = DateTimeOffset.UtcNow;
+                crate.SelectedExportMedium = ExportMedium.Email;
+
+            }
+
+            return Ok();
+        }
+
 
         [HttpGet]
         public IActionResult NextTrack()

@@ -13,6 +13,10 @@
         public List<TrackInfo> LikedTracks { get; } = new();
         public List<TrackInfo> SkippedTracks { get; } = new();
 
+        public string? RegisteredEmail { get; set; }
+        public DateTimeOffset? EmailRegisteredAtUtc { get; set; }
+        public ExportMedium SelectedExportMedium { get; set; } = ExportMedium.None;
+        public bool EmailSent { get; set; }   // ✅ NEW
         public bool IsWarm { get; set; } // equivalent to "review window opened"
     }
 }

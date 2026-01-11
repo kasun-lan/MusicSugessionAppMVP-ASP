@@ -19,6 +19,18 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         }
 
 
+        [HttpGet]
+        public IActionResult AuthStatus()
+        {
+            var isAuthenticated =
+                HttpContext.Session.GetString("IsAuthenticated") == "true";
+
+            return Json(new
+            {
+                isAuthenticated
+            });
+        }
+
         public IActionResult Login(string? returnUrl = null)
         {
             if (HttpContext.Session.GetString("IsAuthenticated") == "true")
