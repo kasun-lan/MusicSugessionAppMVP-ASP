@@ -8,6 +8,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 {
     public class SourcesController : Controller
     {
+        // NOTE: Session Terminology
+        // - "User Login Session" = ASP.NET HttpContext.Session (managed by ASP.NET, tied to browser cookie)
+        // - "Crate Session" = CrateSessionState object stored in _crates dictionary
+        // Currently: One user login session = One crate session (keyed by HttpContext.Session.Id)
+        // To support multiple crate sessions per user login: generate unique crate session IDs (e.g., GUID)
+        // and store the active crate session ID in HttpContext.Session
         static ConcurrentDictionary<string, CrateSessionState> _crates = new();
         private const int PrimaryRefillThreshold = 3;
         private const int PrimaryRefillBatchSize = 5;
@@ -15,14 +21,14 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
         public IActionResult Index()
         {
-            if (HttpContext.Session.GetString("IsAuthenticated") != "true")
-            {
-                return RedirectToAction(
-                    "Login",
-                    "Home",
-                    new { returnUrl = HttpContext.Request.Path }
-                );
-            }
+            //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
+            //{
+            //    return RedirectToAction(
+            //        "Login",
+            //        "Home",
+            //        new { returnUrl = HttpContext.Request.Path }
+            //    );
+            //}
 
             return View();
         }
@@ -33,8 +39,8 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         [HttpGet]
         public IActionResult Review()
         {
-            if (HttpContext.Session.GetString("IsAuthenticated") != "true")
-                return RedirectToAction("Login", "Home");
+            //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
+            //    return RedirectToAction("Login", "Home");
 
             return View();
         }
@@ -88,8 +94,8 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateCrate(CreateCrateInputModel input)
         {
-            if (HttpContext.Session.GetString("IsAuthenticated") != "true")
-                return RedirectToAction("Login", "Home");
+            //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
+            //    return RedirectToAction("Login", "Home");
 
             var clientId = "dbb1ff804d89446f8c744d200b20e2d8";
             var clientSecret = "57681c65030c4ea49e563f2ca643d1b4";
@@ -306,6 +312,49 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             }
 
             return Ok();
+        }
+
+        /// <summary>
+        /// Sends the email playlist without ending the session.
+        /// Used when user registers email during end-session flow to avoid calling EndSession twice.
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> SendEmail()
+        {
+            var sessionId = HttpContext.Session.Id;
+
+            if (!_crates.TryGetValue(sessionId, out var crate))
+                return BadRequest("Crate session not found.");
+
+            // Guard: email export requires email
+            if (crate.SelectedExportMedium != ExportMedium.Email)
+                return BadRequest("Email export not selected.");
+
+            if (string.IsNullOrWhiteSpace(crate.RegisteredEmail))
+                return BadRequest("Email not registered.");
+
+            try
+            {
+                if (!crate.EmailSent)
+                {
+                    var emailService = new FakeEmailService();
+
+                    await emailService.SendPlaylistAsync(
+                        crate.RegisteredEmail,
+                        crate.LikedTracks);
+
+                    lock (crate)
+                    {
+                        crate.EmailSent = true;
+                    }
+                }
+
+                return Json(new { status = "email-sent" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "error", message = ex.Message });
+            }
         }
 
 

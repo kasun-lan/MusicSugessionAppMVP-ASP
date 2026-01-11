@@ -141,7 +141,7 @@
 
                 <button id="send-email" disabled class="w-full bg-[#B4FF00] text-black font-bold py-3 px-4 rounded
                        transition-colors opacity-30 cursor-not-allowed mb-3">
-                    Resigter email
+                    Register email
                 </button>
 
                 <button id="back-to-options" class="w-full border-2 border-white/30 hover:border-white/50
@@ -787,14 +787,41 @@
                 }
 
                 if (exportContext === 'end-session') {
-                    // ✔ End session immediately
-                    const endResponse = await fetch('/Sources/EndSession', {
+                    // ✔ Send email only (EndSession was already called when user confirmed)
+                    const sendResponse = await fetch('/Sources/SendEmail', {
                         method: 'POST'
                     });
 
+                    if (!sendResponse.ok) {
+                        alert('Failed to send email.');
+                        return;
+                    }
 
+                    const result = await sendResponse.json();
 
+                    if (result.status === 'email-sent') {
+                        // Close export overlay
+                        exportOverlay.classList.add('hidden');
+                        exportOverlay.classList.remove('flex');
 
+                        // Show email success screen
+                        endSessionEmail.classList.remove('hidden');
+                        endSessionEmail.classList.add('flex');
+
+                        const isAuthenticated = await getAuthStatus();
+
+                        if (isAuthenticated) {
+                            document.getElementById('email-logged-in')
+                                .classList.remove('hidden');
+                            document.getElementById('email-logged-out')
+                                .classList.add('hidden');
+                        } else {
+                            document.getElementById('email-logged-out')
+                                .classList.remove('hidden');
+                            document.getElementById('email-logged-in')
+                                .classList.add('hidden');
+                        }
+                    }
                 }
 
             } catch (err) {
