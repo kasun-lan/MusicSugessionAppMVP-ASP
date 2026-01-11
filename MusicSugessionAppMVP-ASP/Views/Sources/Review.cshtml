@@ -60,7 +60,7 @@
                 <img id="track-image" src="" alt="Album cover" class="w-full h-full object-cover hidden" />
             </div>
 
-            <!-- Track info (NOW BELOW IMAGE) -->
+            <!-- Track info -->
             <div class="text-center mb-8">
                 <h2 id="track-title" class="text-white text-lg font-bold mb-1"></h2>
                 <p id="track-artist" class="text-white/60 text-sm"></p>
@@ -128,7 +128,7 @@
                 </div>
             </div>
 
-            <!-- MODE 2: Email input -->
+            <!-- MODE 2: Email Form -->
             <div id="email-form" class="hidden">
                 <h3 class="text-white font-bold text-base mb-4 uppercase">
                     Send playlist to your email
@@ -150,7 +150,7 @@
                 </button>
             </div>
 
-            <!-- MODE 3: Success -->
+            <!-- MODE 3: Email Success -->
             <div id="email-success" class="hidden">
                 <p class="text-[#B4FF00] text-sm mb-6 text-center">
                     Email successfully registered
@@ -170,7 +170,7 @@
                 </p>
             </div>
 
-            <!-- MODE 4: Terms & Conditions -->
+            <!-- MODE 4: Terms Overlay -->
             <div id="terms-overlay" class="hidden flex-1 flex flex-col">
 
                 <!-- Header -->
@@ -247,7 +247,7 @@
             </div>
 
 
-            <!-- Skip -->
+            <!-- Skip Export-->
             <button id="skip-export" class="text-white/60 hover:text-white text-sm mt-8 py-2 transition-colors">
                 Skip
             </button>
@@ -255,7 +255,7 @@
 
 
 
-        
+
 
         <!-- END SESSION RESULT: STREAMING -->
         <div id="end-session-streaming"
@@ -290,8 +290,40 @@
         </div>
     </div>
 
+    <!-- END SESSION OVERLAY -->
+    <div id="end-session-overlay"
+         class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
-    <!-- END SESSION RESULT: EMAIL -->
+        <div>
+            <h3 class="text-white font-bold text-base mb-4 uppercase">
+                End speed crating session?
+            </h3>
+
+            <p class="text-white text-sm mb-8">
+                All fun must come to an end so does this.
+                Please confirm below that you want to end the session and that we send your list of liked
+                tracks.
+            </p>
+
+            <button id="confirm-end-session" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                       text-black font-bold py-3 px-4 rounded transition-colors mb-4">
+                End this session and send list
+            </button>
+
+            <button id="continue-session" class="w-full border-2 border-white/30 hover:border-white/50
+                       text-white py-3 px-4 rounded transition-colors">
+                Continue session
+            </button>
+        </div>
+
+        <div class="flex justify-around items-center text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+
+    <!-- END SESSION EMAIL -->
     <div id="end-session-email"
          class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
@@ -329,38 +361,7 @@
 
     </div>
 
-    <!-- END SESSION CONFIRMATION -->
-    <div id="end-session-overlay"
-         class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
-        <div>
-            <h3 class="text-white font-bold text-base mb-4 uppercase">
-                End speed crating session?
-            </h3>
-
-            <p class="text-white text-sm mb-8">
-                All fun must come to an end so does this.
-                Please confirm below that you want to end the session and that we send your list of liked
-                tracks.
-            </p>
-
-            <button id="confirm-end-session" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
-                       text-black font-bold py-3 px-4 rounded transition-colors mb-4">
-                End this session and send list
-            </button>
-
-            <button id="continue-session" class="w-full border-2 border-white/30 hover:border-white/50
-                       text-white py-3 px-4 rounded transition-colors">
-                Continue session
-            </button>
-        </div>
-
-        <div class="flex justify-around items-center text-[#B4FF00] text-2xl">
-            <span>☰</span>
-            <span>👤</span>
-            <span>ℹ</span>
-        </div>
-    </div>
 
 </div>
 
@@ -371,6 +372,9 @@
         let swipeCount = 0;
         let isPolling = false;
         let pollInterval = null;
+        // Possible values: 'mid-session' | 'end-session'
+        let exportContext = 'mid-session';
+
 
         const exportOverlay = document.getElementById('export-overlay');
         const loadingState = document.getElementById('loading-state');
@@ -445,6 +449,7 @@
 
                         case 'no-medium':
                             // User never chose email / streaming
+                            exportContext = 'end-session'; // ✅ ADD THIS
                             exportOverlay.classList.remove('hidden');
                             exportOverlay.classList.add('flex');
                             break;
@@ -620,6 +625,7 @@
 
                 // After 2 swipes, show export overlay
                 if (swipeCount === 5) {
+                    exportContext = 'mid-session'; // ✅ ADD THIS
                     exportOverlay.classList.remove('hidden');
                     exportOverlay.classList.add('flex');
                     stopPolling();
@@ -770,9 +776,26 @@
                     return;
                 }
 
-                exportOptions.classList.add('hidden');
-                emailForm.classList.add('hidden');
-                successOverlay.classList.remove('hidden');
+                // 2. Branch by context
+                if (exportContext === 'mid-session') {
+                    // ✔ DO NOT end session
+                    // ✔ Show "email registered" + continue crating
+                    exportOptions.classList.add('hidden');
+                    emailForm.classList.add('hidden');
+                    successOverlay.classList.remove('hidden');
+                    return;
+                }
+
+                if (exportContext === 'end-session') {
+                    // ✔ End session immediately
+                    const endResponse = await fetch('/Sources/EndSession', {
+                        method: 'POST'
+                    });
+
+
+
+
+                }
 
             } catch (err) {
                 console.error('Email registration failed:', err);
@@ -839,4 +862,3 @@
 
     </script>
 }
-

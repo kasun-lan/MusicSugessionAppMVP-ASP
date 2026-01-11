@@ -170,8 +170,8 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
                     await EnrichArtist(candidate, spotify);
 
-                    if (!await ArtistValdation(crate.SelectedGenres, candidate,seedArtists, spotify,
-                        deezer,musicBrainz))
+                    if (!await ArtistValdation(crate.SelectedGenres, candidate, seedArtists, spotify,
+                        deezer, musicBrainz))
                         continue;
 
                     var shuffled = candidate.Tracks
@@ -477,7 +477,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
         private async Task<ArtistInfo?> ResolveArtistAsync(
-    SpotifyService spotify,MusicBrainzService musicBrainzService,
+    SpotifyService spotify, MusicBrainzService musicBrainzService,
     string inputName)
         {
             var results = await spotify.SearchArtistsAsync(inputName);
