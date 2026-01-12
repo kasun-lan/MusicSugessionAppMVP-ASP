@@ -1,13 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MusicSugessionAppMVP_ASP.Models;
 using MusicSugessionAppMVP_ASP.Services;
+using MusicSugessionAppMVP_ASP.Persistance;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace MusicSugessionAppMVP_ASP.Controllers
 {
     public class SourcesController : Controller
     {
+        private readonly Persistence _db;
+
         // NOTE: Session Terminology
         // - "User Login Session" = ASP.NET HttpContext.Session (managed by ASP.NET, tied to browser cookie)
         // - "Crate Session" = CrateSessionState object stored in _crates dictionary
@@ -17,6 +21,11 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         static ConcurrentDictionary<string, CrateSessionState> _crates = new();
         private const int PrimaryRefillThreshold = 3;
         private const int PrimaryRefillBatchSize = 5;
+
+        public SourcesController(Persistence db)
+        {
+            _db = db;
+        }
 
 
         public IActionResult Index()
@@ -36,20 +45,20 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
 
-        [HttpGet]
-        public IActionResult Review()
-        {
-            //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
-            //    return RedirectToAction("Login", "Home");
+        //[HttpGet]
+        //public IActionResult Review()
+        //{
+        //    //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
+        //    //    return RedirectToAction("Login", "Home");
 
-            return View();
-        }
+        //    return View();
+        //}
 
         [HttpGet]
         public IActionResult Review(string? postLogin = null)
         {
-            if (HttpContext.Session.GetString("IsAuthenticated") != "true")
-                return RedirectToAction("Login", "Home");
+            //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
+            //    return RedirectToAction("Login", "Home");
 
             ViewData["PostLogin"] = postLogin;
             return View();
@@ -57,11 +66,11 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
         [HttpPost]
-        public IActionResult SkipTrack([FromBody] TrackInfo track)
+        public async Task<IActionResult> SkipTrack([FromBody] TrackInfo track)
         {
-            var sessionId = HttpContext.Session.Id;
+            var sessionKey = HttpContext.Session.Id;
 
-            if (!_crates.TryGetValue(sessionId, out var crate))
+            if (!_crates.TryGetValue(sessionKey, out var crate))
                 return Ok();
 
             lock (crate)
@@ -72,6 +81,32 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 {
                     crate.SkippedTracks.Add(track);
                 }
+
+                crate.TotalSwipeCount++;
+                crate.DislikeCount++;
+            }
+
+            // Persist swipe event + track stats
+            if (crate.SessionId != Guid.Empty)
+            {
+                var (artist, trackEntity) = await GetOrCreateArtistAndTrackAsync(track);
+
+                var swipe = new SwipeEvent
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = crate.SessionId,
+                    Session = null!,
+                    TrackId = trackEntity.Id,
+                    Track = null!,
+                    Direction = SwipeDirection.Dislike,
+                    SwipedAtUtc = DateTime.UtcNow
+                };
+
+                _db.SwipeEvents.Add(swipe);
+
+                await UpsertTrackStatsAsync(trackEntity.Id, like: false);
+                await UpsertSessionStatsAsync(crate);
+                await _db.SaveChangesAsync();
             }
 
             return Ok();
@@ -81,12 +116,28 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         [HttpPost]
         public async Task<IActionResult> EndSession()
         {
-            var sessionId = HttpContext.Session.Id;
+            var sessionKey = HttpContext.Session.Id;
 
-            if (!_crates.TryGetValue(sessionId, out var crate))
+            if (!_crates.TryGetValue(sessionKey, out var crate))
                 return BadRequest();
 
             crate.LifecycleState = CrateLifecycleState.Ended;
+            crate.EndedAtUtc = DateTime.UtcNow;
+
+            // Persist session end + stats snapshot
+            if (crate.SessionId != Guid.Empty)
+            {
+                var session = await _db.Sessions
+                    .FirstOrDefaultAsync(s => s.Id == crate.SessionId);
+
+                if (session != null)
+                {
+                    session.EndedAtUtc = crate.EndedAtUtc;
+                }
+
+                await UpsertSessionStatsAsync(crate, snapshot: true);
+                await _db.SaveChangesAsync();
+            }
 
             // 🔒 Guard: no export medium selected
             if (crate.SelectedExportMedium == ExportMedium.None)
@@ -112,6 +163,22 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                             crate.EmailSent = true;
                             crate.LifecycleState = CrateLifecycleState.Exported;
                         }
+
+                        // Persist export record
+                        if (crate.SessionId != Guid.Empty)
+                        {
+                            var export = new SessionExport
+                            {
+                                Id = Guid.NewGuid(),
+                                SessionId = crate.SessionId,
+                                Session = null!,
+                                Medium = ExportMedium.Email,
+                                ExportedAtUtc = DateTime.UtcNow
+                            };
+
+                            _db.SessionExports.Add(export);
+                            await _db.SaveChangesAsync();
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -131,10 +198,10 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         public async Task<IActionResult> CreateCrate(CreateCrateInputModel input)
         {
             HttpContext.Session.SetString("SessionInitialized", "true");
-            var sessionId = HttpContext.Session.Id;
+            var sessionKey = HttpContext.Session.Id;
 
 
-            if (_crates.TryGetValue(sessionId, out var existing))
+            if (_crates.TryGetValue(sessionKey, out var existing))
             {
                 lock (existing)
                 {
@@ -178,11 +245,54 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 LifecycleState = CrateLifecycleState.Active
             };
 
-            _crates[sessionId] = crate;
+            // Create persistent Session row
+            var dbSession = new Session
+            {
+                Id = Guid.NewGuid(),
+                StartedAtUtc = crate.StartedAtUtc,
+                EndedAtUtc = null,
+                UserId = null,
+                User = null!,
+                DeviceType = crate.DeviceType
+            };
+
+            crate.SessionId = dbSession.Id;
+
+            // Seed input artists (snapshot)
+            int position = 1;
+            foreach (var artist in resolvedArtists)
+            {
+                var dbArtist = await GetOrCreateArtistAsync(artist);
+
+                crate.SeedArtists.Add(new SeedArtistSnapshot
+                {
+                    ArtistId = dbArtist.Id,
+                    Name = dbArtist.Name,
+                    Position = position
+                });
+
+                var inputArtist = new SessionInputArtist
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = dbSession.Id,
+                    Session = null!,
+                    ArtistId = dbArtist.Id,
+                    Artist = null!,
+                    Position = position
+                };
+
+                _db.SessionInputArtists.Add(inputArtist);
+                position++;
+            }
+
+            _db.Sessions.Add(dbSession);
+            await _db.SaveChangesAsync();
+
+            _crates[sessionKey] = crate;
 
             // 🔥 Fire-and-forget background fill (IMPORTANT)
             _ = Task.Run(() =>
-                FillCrateAsync(sessionId, resolvedArtists, deezer, spotify, musicBrainzService)
+                FillCrateAsync(sessionKey, resolvedArtists, deezer, spotify, musicBrainzService)
             );
 
             // Redirect to review screen (empty initially)
@@ -255,6 +365,22 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                         crate.EmailSent = true;
                         crate.LifecycleState = CrateLifecycleState.Exported;
                     }
+
+                    // Persist export record
+                    if (crate.SessionId != Guid.Empty)
+                    {
+                        var export = new SessionExport
+                        {
+                            Id = Guid.NewGuid(),
+                            SessionId = crate.SessionId,
+                            Session = null!,
+                            Medium = ExportMedium.Email,
+                            ExportedAtUtc = DateTime.UtcNow
+                        };
+
+                        _db.SessionExports.Add(export);
+                        await _db.SaveChangesAsync();
+                    }
                 }
 
                 return Json(new { status = "email-sent" });
@@ -267,19 +393,21 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
         [HttpGet]
-        public IActionResult NextTrack()
+        public async Task<IActionResult> NextTrack()
         {
-            var sessionId = HttpContext.Session.Id;
+            var sessionKey = HttpContext.Session.Id;
 
-            if (!_crates.TryGetValue(sessionId, out var crate))
+            if (!_crates.TryGetValue(sessionKey, out var crate))
                 return NoContent();
+
+            TrackInfo? track;
 
             lock (crate)
             {
                 if (!crate.IsWarm || crate.PrimaryQueue.Count == 0)
                     return NoContent();
 
-                var track = crate.PrimaryQueue.Dequeue();
+                track = crate.PrimaryQueue.Dequeue();
                 // 🔥 REFILL LOGIC (MISSING BEFORE)
                 if (crate.PrimaryQueue.Count <= PrimaryRefillThreshold &&
                     crate.BackupQueue.Count > 0)
@@ -295,17 +423,43 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                     foreach (var t in refill)
                         crate.PrimaryQueue.Enqueue(t);
                 }
-                return Json(track);
             }
+
+            // Record exposure once per track per session
+            if (crate.SessionId != Guid.Empty && track != null)
+            {
+                var (artist, trackEntity) = await GetOrCreateArtistAndTrackAsync(track);
+
+                lock (crate)
+                {
+                    if (!crate.ExposedTrackIds.Add(trackEntity.Id))
+                        return Json(track);
+                }
+
+                var exposure = new TrackExposure
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = crate.SessionId,
+                    Session = null!,
+                    TrackId = trackEntity.Id,
+                    Track = null!,
+                    ExposedAtUtc = DateTime.UtcNow
+                };
+
+                _db.TrackExposures.Add(exposure);
+                await _db.SaveChangesAsync();
+            }
+
+            return Json(track);
         }
 
 
         [HttpPost]
-        public IActionResult LikeTrack([FromBody] TrackInfo track)
+        public async Task<IActionResult> LikeTrack([FromBody] TrackInfo track)
         {
-            var sessionId = HttpContext.Session.Id;
+            var sessionKey = HttpContext.Session.Id;
 
-            if (!_crates.TryGetValue(sessionId, out var crate))
+            if (!_crates.TryGetValue(sessionKey, out var crate))
                 return Ok();
 
             lock (crate)
@@ -315,11 +469,37 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 {
                     crate.LikedTracks.Add(track);
                 }
+
+                crate.TotalSwipeCount++;
+                crate.LikeCount++;
+            }
+
+            // Persist swipe event + track stats
+            if (crate.SessionId != Guid.Empty)
+            {
+                var (artist, trackEntity) = await GetOrCreateArtistAndTrackAsync(track);
+
+                var swipe = new SwipeEvent
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = crate.SessionId,
+                    Session = null!,
+                    TrackId = trackEntity.Id,
+                    Track = null!,
+                    Direction = SwipeDirection.Like,
+                    SwipedAtUtc = DateTime.UtcNow
+                };
+
+                _db.SwipeEvents.Add(swipe);
+
+                await UpsertTrackStatsAsync(trackEntity.Id, like: true);
+                await UpsertSessionStatsAsync(crate);
+                await _db.SaveChangesAsync();
             }
 
             // 🔥 Expand discovery graph asynchronously
             _ = Task.Run(() =>
-                ExpandFromLikedTrackAsync(sessionId, track)
+                ExpandFromLikedTrackAsync(sessionKey, track)
             );
 
             return Ok();
@@ -654,6 +834,138 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             }
 
             return genres;
+        }
+
+        // -----------------------------
+        // Persistence helpers
+        // -----------------------------
+
+        private async Task<Artist> GetOrCreateArtistAsync(ArtistInfo artistInfo)
+        {
+            var existing = await _db.Artists
+                .FirstOrDefaultAsync(a => a.Name == artistInfo.Name);
+
+            if (existing != null)
+                return existing;
+
+            var artist = new Artist
+            {
+                Id = Guid.NewGuid(),
+                Name = artistInfo.Name,
+                SpotifyId = artistInfo.SpotifyId,
+                DeezerId = artistInfo.DeezerId,
+                MusicBrainzId = artistInfo.Metadata.TryGetValue("musicbrainz_id", out var mb)
+                    ? mb
+                    : null
+            };
+
+            _db.Artists.Add(artist);
+           // await _db.SaveChangesAsync();
+
+            return artist;
+        }
+
+        private async Task<(Artist artist, Track track)> GetOrCreateArtistAndTrackAsync(TrackInfo trackInfo)
+        {
+            var artist = await _db.Artists
+                .FirstOrDefaultAsync(a => a.Name == trackInfo.ArtistName);
+
+            if (artist == null)
+            {
+                artist = new Artist
+                {
+                    Id = Guid.NewGuid(),
+                    Name = trackInfo.ArtistName
+                };
+                _db.Artists.Add(artist);
+                await _db.SaveChangesAsync();
+            }
+
+            var track = await _db.Tracks
+                .FirstOrDefaultAsync(t => t.ArtistId == artist.Id && t.Name == trackInfo.Name);
+
+            if (track == null)
+            {
+                track = new Track
+                {
+                    Id = Guid.NewGuid(),
+                    Name = trackInfo.Name,
+                    ArtistId = artist.Id,
+                    Artist = artist
+                };
+
+                _db.Tracks.Add(track);
+                await _db.SaveChangesAsync();
+            }
+
+            return (artist, track);
+        }
+
+        private async Task UpsertSessionStatsAsync(CrateSessionState crate, bool snapshot = false)
+        {
+            if (crate.SessionId == Guid.Empty)
+                return;
+
+            var stats = await _db.SessionStats
+                .FirstOrDefaultAsync(s => s.SessionId == crate.SessionId);
+
+            if (stats == null)
+            {
+                stats = new SessionStats
+                {
+                    SessionId = crate.SessionId,
+                    TotalSwipes = crate.TotalSwipeCount,
+                    Likes = crate.LikeCount,
+                    Dislikes = crate.DislikeCount
+                };
+
+                _db.SessionStats.Add(stats);
+            }
+            else
+            {
+                stats.TotalSwipes = crate.TotalSwipeCount;
+                stats.Likes = crate.LikeCount;
+                stats.Dislikes = crate.DislikeCount;
+            }
+
+            if (snapshot)
+            {
+                var snap = new SessionStatsSnapshot
+                {
+                    SessionId = crate.SessionId,
+                    TotalSwipes = crate.TotalSwipeCount,
+                    Likes = crate.LikeCount,
+                    Dislikes = crate.DislikeCount,
+                    CapturedAtUtc = DateTime.UtcNow
+                };
+
+                _db.SessionStatsSnapshots.Add(snap);
+            }
+        }
+
+        private async Task UpsertTrackStatsAsync(Guid trackId, bool like)
+        {
+            var stats = await _db.TrackStats
+                .FirstOrDefaultAsync(s => s.TrackId == trackId);
+
+            if (stats == null)
+            {
+                stats = new TrackStats
+                {
+                    TrackId = trackId,
+                    TotalLikes = like ? 1 : 0,
+                    TotalDislikes = like ? 0 : 1
+                };
+
+                _db.TrackStats.Add(stats);
+            }
+            else
+            {
+                if (like)
+                    stats.TotalLikes++;
+                else
+                    stats.TotalDislikes++;
+            }
         }
     }
 }

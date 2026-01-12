@@ -1,3 +1,5 @@
+using MusicSugessionAppMVP_ASP.Persistance;
+
 namespace MusicSugessionAppMVP_ASP
 {
     public class Program
@@ -5,6 +7,13 @@ namespace MusicSugessionAppMVP_ASP
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // -----------------------------
+            // Persistence (EF Core DbContext)
+            // -----------------------------
+            builder.Services.AddPersistence(
+                builder.Configuration.GetConnectionString("DefaultConnection")
+            );
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
