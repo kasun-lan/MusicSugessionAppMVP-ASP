@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MusicSugessionAppMVP_ASP.Models;
+using MusicSugessionAppMVP_ASP.Persistance;
 using System.Diagnostics;
 
 namespace MusicSugessionAppMVP_ASP.Controllers
@@ -7,10 +8,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly Persistence _db;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, Persistence db)
         {
             _logger = logger;
+            _db = db;
         }
 
         public IActionResult Index()
@@ -54,6 +57,8 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             {
                 return RedirectToAction("Index", "Home");
             }
+
+
 
 
             // Simulated authentication
