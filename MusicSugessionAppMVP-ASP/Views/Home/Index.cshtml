@@ -56,11 +56,14 @@
 
             <!-- Buttons -->
             <div class="space-y-4 pt-4">
-                <button class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
-                               text-black font-bold py-4 px-6 rounded
-                               transition-colors shadow-[0_0_30px_rgba(180,255,0,0.3)]">
+                <a asp-controller="Sources"
+                   asp-action="Index"
+                   class="block text-center w-full bg-[#B4FF00] hover:bg-[#A0E600]
+          text-black font-bold py-4 px-6 rounded
+          transition-colors shadow-[0_0_30px_rgba(180,255,0,0.3)]">
                     GO SPEED CRATING
-                </button>
+                </a>
+
 
                 @if (ViewBag.IsAuthenticated != true)
                 {

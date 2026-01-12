@@ -1,4 +1,5 @@
-﻿using System.IO.Pipes;
+﻿using MusicSugessionAppMVP_ASP.Models;
+using System.IO.Pipes;
 
 namespace MusicSugessionAppMVP_ASP.Persistance
 {
@@ -18,6 +19,73 @@ namespace MusicSugessionAppMVP_ASP.Persistance
         public ICollection<SessionInputArtist> InputArtists { get; set; }
         public ICollection<SwipeEvent> SwipeEvents { get; set; }
     }
+
+    public class SessionExport
+    {
+        public Guid Id { get; set; }
+
+        public Guid SessionId { get; set; }
+        public Session Session { get; set; }
+
+        public ExportMedium Medium { get; set; } // Email, Spotify, AppleMusic, etc.
+
+        public DateTime ExportedAtUtc { get; set; }
+    }
+
+    public class TrackExposure
+    {
+        public Guid Id { get; set; }
+
+        public Guid SessionId { get; set; }
+        public Session Session { get; set; }
+
+        public Guid TrackId { get; set; }
+        public Track Track { get; set; }
+
+        public DateTime ExposedAtUtc { get; set; }
+    }
+
+    public class SessionStatsSnapshot
+    {
+        public Guid SessionId { get; set; }
+
+        public int TotalSwipes { get; set; }
+        public int Likes { get; set; }
+        public int Dislikes { get; set; }
+
+        public DateTime CapturedAtUtc { get; set; }
+    }
+
+    public class ArtistExposure
+    {
+        public Guid Id { get; set; }
+
+        public Guid SessionId { get; set; }
+        public Session Session { get; set; }
+
+        public Guid ArtistId { get; set; }
+        public Artist Artist { get; set; }
+
+        public DateTime ExposedAtUtc { get; set; }
+    }
+
+    public class GenreExposure
+    {
+        public Guid Id { get; set; }
+
+        public Guid SessionId { get; set; }
+        public Session Session { get; set; }
+
+        public Guid GenreId { get; set; }
+        public Genre Genre { get; set; }
+
+        public DateTime ExposedAtUtc { get; set; }
+    }
+
+
+
+
+
 
     public class User
     {

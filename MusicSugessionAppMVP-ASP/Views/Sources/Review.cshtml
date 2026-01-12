@@ -353,13 +353,41 @@
 
                 <button id="save-list-btn"
                         class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
-                       text-black font-bold py-3 px-4 rounded transition-colors">
+               text-black font-bold py-3 px-4 rounded transition-colors">
                     Save list to your Speed Crating profile
                 </button>
+
             </div>
         </div>
 
     </div>
+
+    <!-- POST-LOGIN SAVE CONFIRMATION OVERLAY -->
+    <div id="profile-save-overlay"
+         class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
+
+        <div>
+            <!-- Header -->
+            <p class="text-[#B4FF00] text-sm mb-6">
+                Playlist saved successfully
+            </p>
+
+            <!-- Message -->
+            <p class="text-white/60 text-sm mb-8">
+                Your Speed Crating playlist has been saved to your profile.
+            </p>
+
+           
+        </div>
+
+        <!-- Bottom nav (optional, consistent with others) -->
+        <div class="flex justify-around items-center text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+
 
 
 
@@ -416,6 +444,15 @@
             audioEl.src = '';
         }
 
+        document.getElementById('save-list-btn')
+            .addEventListener('click', () => {
+
+                const returnUrl =
+                    encodeURIComponent('/Sources/Review?postLogin=save');
+
+                window.location.href =
+                    `/Home/Login?returnUrl=${returnUrl}`;
+            });
 
 
         endSessionBtn.addEventListener('click', () => {
@@ -605,6 +642,19 @@
             }
         }
 
+        async function skipTrack(track) {
+            try {
+                await fetch('/Sources/SkipTrack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(track)
+                });
+            } catch (err) {
+                console.error('Error skipping track:', err);
+            }
+        }
+
+
         async function showHeart(type) {
             const el = type === 'like' ? likeHeart : dislikeHeart;
             el.classList.remove('hidden');
@@ -615,6 +665,9 @@
             // If liked, call the LikeTrack endpoint
             if (type === 'like' && currentTrack) {
                 await likeTrack(currentTrack);
+            }
+            else if (currentTrack) {
+                await skipTrack(currentTrack);
             }
 
             setTimeout(async () => {
@@ -885,6 +938,30 @@
             .addEventListener('click', () => {
                 closeOverlay();
             });
+
+
+        const postLogin = '@ViewData["PostLogin"]';
+
+        const profileSaveOverlay =
+            document.getElementById('profile-save-overlay');
+
+        if (postLogin === 'save') {
+            // Stop any ongoing activity
+            stopPreview();
+            stopPolling();
+
+            // Hide other overlays defensively
+            exportOverlay.classList.add('hidden');
+            endSessionOverlay.classList.add('hidden');
+            endSessionEmail.classList.add('hidden');
+            endSessionStreaming.classList.add('hidden');
+
+            // Show save confirmation
+            profileSaveOverlay.classList.remove('hidden');
+            profileSaveOverlay.classList.add('flex');
+        }
+
+
 
 
     </script>
