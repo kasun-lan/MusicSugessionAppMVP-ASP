@@ -86,6 +86,8 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             if (!_crates.TryGetValue(sessionId, out var crate))
                 return BadRequest();
 
+            crate.LifecycleState = CrateLifecycleState.Ended;
+
             // 🔒 Guard: no export medium selected
             if (crate.SelectedExportMedium == ExportMedium.None)
                 return Json(new { status = "no-medium" });
@@ -108,6 +110,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                         lock (crate)
                         {
                             crate.EmailSent = true;
+                            crate.LifecycleState = CrateLifecycleState.Exported;
                         }
                     }
                 }
@@ -128,6 +131,17 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         public async Task<IActionResult> CreateCrate(CreateCrateInputModel input)
         {
             HttpContext.Session.SetString("SessionInitialized", "true");
+            var sessionId = HttpContext.Session.Id;
+
+
+            if (_crates.TryGetValue(sessionId, out var existing))
+            {
+                lock (existing)
+                {
+                    existing.LifecycleState = CrateLifecycleState.ToBeDiscarded;
+                }
+            }
+
 
 
             //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
@@ -155,11 +169,13 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             }
 
 
-            var sessionId = HttpContext.Session.Id;
 
             var crate = new CrateSessionState
             {
-                SelectedGenres = ExtractGenres(resolvedArtists)
+                SelectedGenres = ExtractGenres(resolvedArtists),
+                StartedAtUtc = DateTime.UtcNow,
+                DeviceType = Persistance.DeviceType.Desktop,//TODO
+                LifecycleState = CrateLifecycleState.Active
             };
 
             _crates[sessionId] = crate;
@@ -177,7 +193,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
 
-       
+
 
         [HttpPost]
         public IActionResult RegisterEmail([FromBody] RegisterEmailInputModel input)
@@ -237,6 +253,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                     lock (crate)
                     {
                         crate.EmailSent = true;
+                        crate.LifecycleState = CrateLifecycleState.Exported;
                     }
                 }
 
@@ -350,7 +367,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                             crate.BackupQueue.Add(t);
 
                         // equivalent of "open review window"
-                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 3)
+                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 1)
                             crate.IsWarm = true;
                     }
 
