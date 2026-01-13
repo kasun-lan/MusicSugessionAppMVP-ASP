@@ -18,6 +18,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
         public IActionResult Index()
         {
+            var isAuthenticated =
+                HttpContext.Session.GetString("IsAuthenticated") == "true";
+
+            if(isAuthenticated)
+                ViewBag.IsAuthenticated = true;
+
             return View();
         }
 

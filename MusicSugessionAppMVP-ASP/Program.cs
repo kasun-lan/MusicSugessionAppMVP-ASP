@@ -24,6 +24,7 @@ namespace MusicSugessionAppMVP_ASP
                 options.Cookie.HttpOnly = true;
                 options.Cookie.IsEssential = true;
             });
+            builder.Services.AddHttpContextAccessor();
 
 
 
