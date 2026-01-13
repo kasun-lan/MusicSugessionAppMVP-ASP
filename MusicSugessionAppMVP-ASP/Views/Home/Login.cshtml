@@ -16,8 +16,10 @@
     <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
 
         <!-- Logo -->
+        <!-- Logo -->
         <div class="flex justify-center mb-8">
-            <div class="text-[#B4FF00] text-3xl">◆</div>
+            <img src="~/images/Speed Crating logo NEW.png"
+                 class="w-10 h-auto object-contain" />
         </div>
 
         <!-- Content -->
@@ -26,6 +28,13 @@
             <h2 class="text-white text-xl font-bold mb-6">
                 LOGIN
             </h2>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="bg-red-500/20 border-2 border-red-500 text-red-400 px-4 py-3 rounded mb-4 text-sm">
+                    @ViewBag.Error
+                </div>
+            }
 
             <form asp-action="Login" method="post">
                 <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />

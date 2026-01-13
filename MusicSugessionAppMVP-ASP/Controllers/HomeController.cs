@@ -47,11 +47,11 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
 
-      
+
 
 
         [HttpPost]
-        public IActionResult Login(string username, string password,string? returnUrl)
+        public IActionResult Login(string username, string password, string? returnUrl)
         {
             if (HttpContext.Session.GetString("IsAuthenticated") == "true")
             {
@@ -59,7 +59,13 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             }
 
 
-
+            //check whether user exists in the database
+            var user = _db.Users.FirstOrDefault(u => u.Name == username);
+            if (user == null)
+            {
+                ViewBag.Error = "User not found";
+                return RedirectToAction("Login", "Home");
+            }
 
             // Simulated authentication
             if (!string.IsNullOrWhiteSpace(username))
