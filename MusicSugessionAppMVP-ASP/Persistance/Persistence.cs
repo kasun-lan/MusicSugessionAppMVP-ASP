@@ -43,6 +43,7 @@ namespace MusicSugessionAppMVP_ASP.Persistance
         public DbSet<ArtistNoSimilarFound> ArtistNoSimilarFounds => Set<ArtistNoSimilarFound>();
 
         public DbSet<StreamingPlatform> StreamingPlatforms => Set<StreamingPlatform>();
+        public DbSet<UserRoleAssignment> UserRoleAssignments => Set<UserRoleAssignment>();
 
         // -----------------------------
         // Model Configuration
@@ -266,6 +267,22 @@ namespace MusicSugessionAppMVP_ASP.Persistance
                 e.HasOne(x => x.PreferredStreamingPlatform)
                  .WithMany()
                  .HasForeignKey(x => x.PreferredStreamingPlatformId);
+            });
+
+            // -----------------------------
+            // UserRoleAssignment
+            // -----------------------------
+            model.Entity<UserRoleAssignment>(e =>
+            {
+                e.HasKey(x => x.Id);
+
+                e.HasOne(x => x.User)
+                 .WithMany(u => u.Roles)
+                 .HasForeignKey(x => x.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.Property(x => x.Role)
+                 .HasConversion<int>();
             });
         }
 

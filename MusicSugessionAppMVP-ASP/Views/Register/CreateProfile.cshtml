@@ -1,0 +1,106 @@
+@model MusicSugessionAppMVP_ASP.Models.CreateProfileViewModel
+@{
+    ViewData["Title"] = "Create Profile";
+}
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900">
+
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        <!-- Logo -->
+        <div class="flex justify-center mb-6">
+            <div class="text-[#B4FF00] text-3xl">◆</div>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 flex flex-col">
+
+            <h2 class="text-white text-xl font-bold mb-6">
+                CREATE YOUR PROFILE
+            </h2>
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="bg-red-500/20 border-2 border-red-500 text-red-400 px-4 py-3 rounded mb-4 text-sm">
+                    <ul>
+                        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                        {
+                            <li>@error.ErrorMessage</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            <form asp-action="CreateProfile" method="post">
+                @Html.AntiForgeryToken()
+                <div class="space-y-4 mb-8">
+                    <input type="text" 
+                           asp-for="Name" 
+                           placeholder="Name"
+                           class="w-full bg-transparent border-2 border-white/30
+                                  focus:border-[#B4FF00] text-white
+                                  placeholder-gray-500 py-3 px-4 rounded outline-none" />
+                    <span asp-validation-for="Name" class="text-red-400 text-sm"></span>
+
+                    <input type="email" 
+                           asp-for="Email" 
+                           placeholder="Email"
+                           class="w-full bg-transparent border-2 border-white/30
+                                  focus:border-[#B4FF00] text-white
+                                  placeholder-gray-500 py-3 px-4 rounded outline-none" />
+                    <span asp-validation-for="Email" class="text-red-400 text-sm"></span>
+
+                    <select asp-for="PreferredStreamingPlatformId" 
+                            class="w-full bg-transparent border-2 border-white/30
+                                   focus:border-[#B4FF00] text-white
+                                   py-3 px-4 rounded outline-none
+                                   [&>option]:bg-black [&>option]:text-white">
+                        <option value="">Preferred streaming platform</option>
+                        @foreach (var platform in Model.StreamingPlatforms)
+                        {
+                            <option value="@platform.Id">@platform.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="PreferredStreamingPlatformId" class="text-red-400 text-sm"></span>
+
+                    <input type="password" 
+                           asp-for="Password" 
+                           placeholder="Choose password"
+                           class="w-full bg-transparent border-2 border-white/30
+                                  focus:border-[#B4FF00] text-white
+                                  placeholder-gray-500 py-3 px-4 rounded outline-none" />
+                    <span asp-validation-for="Password" class="text-red-400 text-sm"></span>
+
+                    <input type="password" 
+                           asp-for="ConfirmPassword" 
+                           placeholder="Re-type password"
+                           class="w-full bg-transparent border-2 border-white/30
+                                  focus:border-[#B4FF00] text-white
+                                  placeholder-gray-500 py-3 px-4 rounded outline-none" />
+                    <span asp-validation-for="ConfirmPassword" class="text-red-400 text-sm"></span>
+                </div>
+
+                <button type="submit"
+                        class="block w-full text-center bg-[#B4FF00] hover:bg-[#A0E600]
+                               text-black font-bold py-4 px-6 rounded transition-colors">
+                    Create profile
+                </button>
+            </form>
+        </div>
+
+        <!-- Bottom nav -->
+        <div class="flex justify-around items-center pt-8 text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

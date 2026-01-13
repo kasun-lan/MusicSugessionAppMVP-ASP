@@ -60,7 +60,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
             //check whether user exists in the database
-            var user = _db.Users.FirstOrDefault(u => u.Name == username);
+            var user = _db.Users.FirstOrDefault(u => u.Email == username);
             if (user == null)
             {
                 ViewBag.Error = "User not found";

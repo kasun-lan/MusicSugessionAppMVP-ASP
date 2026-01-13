@@ -1,0 +1,85 @@
+@model MusicSugessionAppMVP_ASP.Models.CreateProfileRoleViewModel
+@{
+    ViewData["Title"] = "Create Profile – Role";
+}
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900">
+
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        <!-- Logo -->
+        <div class="flex justify-center mb-6">
+            <div class="text-[#B4FF00] text-3xl">◆</div>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 flex flex-col">
+
+            <h2 class="text-white text-xl font-bold mb-3">
+                CREATE YOUR PROFILE
+            </h2>
+
+            <p class="text-gray-400 text-sm mb-6">
+                Check off boxes which fit you. You can check off more than one box.
+            </p>
+
+            <form asp-action="CreateProfileRole" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="UserId" />
+
+                <div class="space-y-4 mb-8 text-white text-sm">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" 
+                               asp-for="IsDJ" 
+                               class="accent-[#B4FF00] w-4 h-4">
+                        I'm a DJ
+                    </label>
+
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" 
+                               asp-for="IsMusician" 
+                               class="accent-[#B4FF00] w-4 h-4">
+                        I'm a musician
+                    </label>
+
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" 
+                               asp-for="IsProducer" 
+                               class="accent-[#B4FF00] w-4 h-4">
+                        I'm a producer
+                    </label>
+
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" 
+                               asp-for="IsProfessionalCurator" 
+                               class="accent-[#B4FF00] w-4 h-4">
+                        I professionally curate playlists
+                    </label>
+                </div>
+
+                <button type="submit"
+                        class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                               text-black font-bold py-4 px-6 rounded transition-colors mb-4">
+                    Update profile
+                </button>
+
+                <a asp-controller="Home" 
+                   asp-action="Index"
+                   class="text-center text-white/60 hover:text-white text-sm block">
+                    Skip
+                </a>
+            </form>
+        </div>
+
+        <!-- Bottom nav -->
+        <div class="flex justify-around items-center pt-8 text-[#B4FF00] text-2xl">
+            <span>☰</span>
+            <span>👤</span>
+            <span>ℹ</span>
+        </div>
+    </div>
+</div>
+

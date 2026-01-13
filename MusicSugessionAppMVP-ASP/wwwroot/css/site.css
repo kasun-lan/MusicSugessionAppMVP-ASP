@@ -749,6 +749,10 @@ video {
   height: 100%;
 }
 
+.h-4 {
+  height: 1rem;
+}
+
 .min-h-screen {
   min-height: 100vh;
 }
@@ -775,6 +779,10 @@ video {
 
 .w-full {
   width: 100%;
+}
+
+.w-4 {
+  width: 1rem;
 }
 
 .max-w-\[375px\] {
@@ -850,6 +858,10 @@ video {
 
 .justify-around {
   justify-content: space-around;
+}
+
+.gap-3 {
+  gap: 0.75rem;
 }
 
 .space-y-3 > :not([hidden]) ~ :not([hidden]) {
@@ -1179,6 +1191,11 @@ video {
   color: rgb(255 255 255 / 0.7);
 }
 
+.text-gray-500 {
+  --tw-text-opacity: 1;
+  color: rgb(107 114 128 / var(--tw-text-opacity, 1));
+}
+
 .underline {
   text-decoration-line: underline;
 }
@@ -1191,6 +1208,10 @@ video {
 .placeholder-gray-500::placeholder {
   --tw-placeholder-opacity: 1;
   color: rgb(107 114 128 / var(--tw-placeholder-opacity, 1));
+}
+
+.accent-\[\#B4FF00\] {
+  accent-color: #B4FF00;
 }
 
 .opacity-30 {
@@ -1296,4 +1317,14 @@ video {
 .focus\:border-\[\#B4FF00\]:focus {
   --tw-border-opacity: 1;
   border-color: rgb(180 255 0 / var(--tw-border-opacity, 1));
+}
+
+.\[\&\>option\]\:bg-black>option {
+  --tw-bg-opacity: 1;
+  background-color: rgb(0 0 0 / var(--tw-bg-opacity, 1));
+}
+
+.\[\&\>option\]\:text-white>option {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }

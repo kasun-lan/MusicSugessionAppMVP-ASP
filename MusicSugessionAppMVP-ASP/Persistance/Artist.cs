@@ -101,6 +101,25 @@ namespace MusicSugessionAppMVP_ASP.Persistance
         public DateTime RegisteredAtUtc { get; set; }
 
         public ICollection<Session> Sessions { get; set; }
+        public ICollection<UserRoleAssignment> Roles { get; set; }
+    }
+
+    public enum UserRole
+    {
+        DJ = 1,
+        Musician = 2,
+        Producer = 3,
+        ProfessionalCurator = 4
+    }
+
+    public class UserRoleAssignment
+    {
+        public Guid Id { get; set; }
+
+        public Guid UserId { get; set; }
+        public User User { get; set; }
+
+        public UserRole Role { get; set; }
     }
 
 
