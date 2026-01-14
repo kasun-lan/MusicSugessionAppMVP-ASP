@@ -1,9 +1,14 @@
-﻿@using MusicSugessionAppMVP_ASP.Persistance
+@using MusicSugessionAppMVP_ASP.Persistance
 @model MusicSugessionAppMVP_ASP.Persistance.Session
 
-<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden">
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900 flex flex-col">
 
-    <div class="p-6 pt-16 text-white space-y-6">
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <div class="flex-1 overflow-y-auto p-6 pt-16 text-white space-y-6">
+
+        @Html.Partial("_Logo")
 
         <div>
             <h1 class="text-lg font-bold">
@@ -49,5 +54,7 @@
 
     </div>
 
-    @await Html.PartialAsync("_BottomNav")
+    <div class="mt-auto pb-6">
+        @await Html.PartialAsync("_BottomNav")
+    </div>
 </div>

@@ -1,0 +1,111 @@
+@* End Session Overlay Partial - Can be used globally *@
+<!-- END SESSION OVERLAY -->
+<div id="end-session-overlay" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/90">
+    <div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900 flex flex-col justify-between p-8 pt-20 pb-8">
+
+    @Html.Partial("_Logo")
+
+    <div>
+        <h3 class="text-white font-bold text-base mb-4 uppercase">
+            End speed crating session?
+        </h3>
+
+        <p class="text-white text-sm mb-8">
+            All fun must come to an end so does this.
+            Please confirm below that you want to end the session and that we send your list of liked
+            tracks.
+        </p>
+
+        <button id="confirm-end-session" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+                   text-black font-bold py-3 px-4 rounded transition-colors mb-4">
+            End this session and send list
+        </button>
+
+        <button id="continue-session" class="w-full border-2 border-white/30 hover:border-white/50
+                   text-white py-3 px-4 rounded transition-colors">
+            Continue session
+        </button>
+    </div>
+
+        @await Html.PartialAsync("_BottomNav")
+    </div>
+</div>
+
+<script>
+    (function() {
+        // Initialize end session overlay handlers if not already initialized
+        if (window.endSessionOverlayInitialized) return;
+        window.endSessionOverlayInitialized = true;
+
+        const endSessionOverlay = document.getElementById('end-session-overlay');
+        if (!endSessionOverlay) return;
+
+        const continueSessionBtn = document.getElementById('continue-session');
+        const confirmEndSessionBtn = document.getElementById('confirm-end-session');
+
+        if (continueSessionBtn) {
+            continueSessionBtn.addEventListener('click', () => {
+                endSessionOverlay.classList.add('hidden');
+                endSessionOverlay.classList.remove('flex');
+            });
+        }
+
+        if (confirmEndSessionBtn) {
+            // Check if Review.cshtml specific handlers exist (for export overlay logic)
+            const exportOverlay = document.getElementById('export-overlay');
+            const endSessionEmail = document.getElementById('end-session-email');
+            const endSessionStreaming = document.getElementById('end-session-streaming');
+            const isReviewPage = exportOverlay !== null;
+
+            confirmEndSessionBtn.addEventListener('click', async () => {
+                endSessionOverlay.classList.add('hidden');
+                endSessionOverlay.classList.remove('flex');
+
+                try {
+                    const response = await fetch('/Sources/EndSession', {
+                        method: 'POST'
+                    });
+
+                    if (!response.ok) {
+                        alert('Failed to end session.');
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    // If on Review page, use Review-specific logic
+                    if (isReviewPage && window.handleEndSessionResult) {
+                        // Use Review page handler if available
+                        window.handleEndSessionResult(result);
+                    } else {
+                        // General navigation logic
+                        if (result.status === 'email-sent' || result.status === 'spotify-sent' || result.status === 'streaming-sent') {
+                            // Session ended successfully, allow navigation
+                            if (window.pendingNavigationUrl) {
+                                window.location.href = window.pendingNavigationUrl;
+                                window.pendingNavigationUrl = null;
+                            } else {
+                                // No pending navigation, redirect to home
+                                window.location.href = '/Home';
+                            }
+                        } else if (result.status === 'no-medium' || result.status === 'missing-email') {
+                            // Need to handle export, redirect to Review page
+                            window.location.href = '/Sources/Review';
+                        } else {
+                            // Session ended, allow navigation
+                            if (window.pendingNavigationUrl) {
+                                window.location.href = window.pendingNavigationUrl;
+                                window.pendingNavigationUrl = null;
+                            } else {
+                                window.location.href = '/Home';
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('End session failed:', err);
+                    alert('Network error while ending session.');
+                }
+            });
+        }
+    })();
+</script>

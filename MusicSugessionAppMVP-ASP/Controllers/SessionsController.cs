@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MusicSugessionAppMVP_ASP.Persistance;
 
@@ -32,6 +32,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             var sessions = _db.Sessions
                 .Where(s => s.UserId == user.Id)
                 .Include(s => s.InputArtists)
+                    .ThenInclude(x => x.Artist)
                 .OrderByDescending(s => s.StartedAtUtc)
                 .AsNoTracking()
                 .ToList();

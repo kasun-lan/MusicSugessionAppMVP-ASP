@@ -30,10 +30,11 @@
 
         <!-- Top bar -->
         <div class="relative flex items-center mb-4">
+
             <!-- Logo - centered -->
             <div class="flex justify-center w-full mb-8">
                 <img src="~/images/Speed Crating logo NEW.png"
-                     class="w-10 h-auto object-contain" />
+                     class="w-20 h-auto object-contain" />
             </div>
             <!-- End session button - positioned absolutely on the right -->
             <button id="end-session-btn"
@@ -83,23 +84,14 @@
         <audio id="preview-audio" preload="none"></audio>
 
 
-        <!-- Bottom nav -->
-        <div class="flex justify-around items-center text-[#B4FF00] text-2xl">
-            <span>☰</span>
-            <span>👤</span>
-            <span>ℹ</span>
-        </div>
+        @Html.Partial("_BottomNav")
     </div>
 
     <!-- Export Overlay -->
     <div id="export-overlay"
          class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
-        <!-- Logo -->
-        <div class="flex justify-center mb-8">
-            <img src="~/images/Speed Crating logo NEW.png"
-                 class="w-10 h-auto object-contain" />
-        </div>
+        @Html.Partial("_Logo")
 
         <!-- CONTENT -->
         <div class="flex-1 flex flex-col">
@@ -304,11 +296,7 @@
     <div id="end-session-overlay"
          class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
-        <!-- Logo -->
-        <div class="flex justify-center mb-8">
-            <img src="~/images/Speed Crating logo NEW.png"
-                 class="w-10 h-auto object-contain" />
-        </div>
+        @Html.Partial("_Logo")
 
         <div>
             <h3 class="text-white font-bold text-base mb-4 uppercase">
@@ -339,11 +327,7 @@
     <div id="end-session-email"
          class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
-        <!-- Logo -->
-        <div class="flex justify-center mb-8">
-            <img src="~/images/Speed Crating logo NEW.png"
-                 class="w-10 h-auto object-contain" />
-        </div>
+        @Html.Partial("_Logo")
 
         <div>
             <!-- COMMON HEADER -->
@@ -386,11 +370,7 @@
     <div id="profile-save-overlay"
          class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
-        <!-- Logo -->
-        <div class="flex justify-center mb-8">
-            <img src="~/images/Speed Crating logo NEW.png"
-                 class="w-10 h-auto object-contain" />
-        </div>
+        @Html.Partial("_Logo")
 
         <div>
             <!-- Header -->
@@ -544,6 +524,7 @@
         document.getElementById('confirm-end-session')
             .addEventListener('click', async () => {
                 endSessionOverlay.classList.add('hidden');
+                endSessionOverlay.classList.remove('flex');
 
                 try {
                     const response = await fetch('/Sources/EndSession', {

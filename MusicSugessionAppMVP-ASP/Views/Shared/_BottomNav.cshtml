@@ -1,4 +1,4 @@
-﻿@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 
 @{
     var isAuthenticated =
@@ -45,7 +45,7 @@
 
         nav.querySelector('[data-nav="menu"]')
            .addEventListener('click', () => {
-               console.log('Menu clicked');
+               window.location.href = '/Sessions';
            });
 
         nav.querySelector('[data-nav="profile1"]')

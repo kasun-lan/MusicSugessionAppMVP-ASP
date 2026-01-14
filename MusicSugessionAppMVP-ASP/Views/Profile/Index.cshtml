@@ -1,4 +1,4 @@
-﻿@model MusicSugessionAppMVP_ASP.Models.ProfileViewModel
+@model MusicSugessionAppMVP_ASP.Models.ProfileViewModel
 
 @{
     ViewData["Title"] = "My Profile";
@@ -7,6 +7,8 @@
 <div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900">
 
     <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        @Html.Partial("_Logo")
 
         <h2 class="text-white text-xl font-bold mb-6">
             MY ACCOUNT

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using MusicSugessionAppMVP_ASP.Models;
 using MusicSugessionAppMVP_ASP.Services;
 using MusicSugessionAppMVP_ASP.Persistance;
@@ -87,8 +87,33 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
             ViewData["PostLogin"] = postLogin;
 
-            // Resolve selected artists (crate source) from current crate session
             var sessionKey = HttpContext.Session.Id;
+
+            // ✅ If the user logged in mid-flow, attach the existing DB session to them.
+            // This fixes the case where the crate was created anonymously (UserId=null)
+            // and later the UI claims "saved successfully" after login.
+            var isAuthenticated = HttpContext.Session.GetString("IsAuthenticated") == "true";
+            if (isAuthenticated)
+            {
+                var userEmail = HttpContext.Session.GetString("Email");
+                if (!string.IsNullOrWhiteSpace(userEmail) &&
+                    _crates.TryGetValue(sessionKey, out var activeCrate) &&
+                    activeCrate.SessionId != Guid.Empty)
+                {
+                    var user = _db.Users.FirstOrDefault(u => u.Email == userEmail);
+                    if (user != null)
+                    {
+                        var dbSession = _db.Sessions.FirstOrDefault(s => s.Id == activeCrate.SessionId);
+                        if (dbSession != null && dbSession.UserId != user.Id)
+                        {
+                            dbSession.UserId = user.Id;
+                            _db.SaveChanges();
+                        }
+                    }
+                }
+            }
+
+            // Resolve selected artists (crate source) from current crate session
             if (_crates.TryGetValue(sessionKey, out var crate) && crate.SeedArtists != null)
             {
                 var artistNames = crate.SeedArtists
@@ -103,6 +128,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 }
             }
 
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult Tutorial()
+        {
             return View();
         }
 
@@ -251,6 +282,11 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateCrate(CreateCrateInputModel input)
         {
+            // Check if tutorial should be shown (user not logged in AND first time in session)
+            var userEmail = HttpContext.Session.GetString("Email");
+            var isFirstTimeInSession = HttpContext.Session.GetString("SessionInitialized") == null;
+            var shouldShowTutorial = string.IsNullOrWhiteSpace(userEmail) && isFirstTimeInSession;
+
             HttpContext.Session.SetString("SessionInitialized", "true");
             var sessionKey = HttpContext.Session.Id;
 
@@ -302,7 +338,6 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
 //get the logged in user email
-            var userEmail = HttpContext.Session.GetString("Email");
             var user = _db.Users.FirstOrDefault(u => u.Email == userEmail);
             // Create persistent Session row
             var dbSession = new Session
@@ -354,8 +389,15 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 FillCrateAsync(sessionKey, resolvedArtists, deezer, spotify, musicBrainzService)
             );
 
-            // Redirect to review screen (empty initially)
-            return RedirectToAction("Review");
+            // Redirect to tutorial or review screen
+            if (shouldShowTutorial)
+            {
+                return RedirectToAction("Tutorial");
+            }
+            else
+            {
+                return RedirectToAction("Review");
+            }
         }
 
 

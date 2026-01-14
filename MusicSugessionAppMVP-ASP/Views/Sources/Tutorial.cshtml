@@ -1,0 +1,151 @@
+@{
+    ViewData["Title"] = "How It Works – Speed Crating";
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/output.css">
+    <style>
+        .tutorial-image {
+            background-image: url('./images/tutorial-1.jpg');
+        }
+
+        @@keyframes heart-pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.9;
+            }
+        }
+
+        .heart-pulse {
+            animation: heart-pulse 0.8s ease-out;
+        }
+    </style>
+}
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900"
+     id="swipe-area">
+
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <!-- Heart animations -->
+    <div id="like-heart" class="absolute inset-0 z-50 hidden items-center justify-center pointer-events-none">
+        <div class="heart-pulse">
+            <div class="text-[#B4FF00] text-[120px] drop-shadow-[0_0_40px_rgba(180,255,0,0.8)]">♥</div>
+        </div>
+    </div>
+
+    <div id="dislike-heart"
+         class="absolute inset-0 z-50 hidden items-center justify-center pointer-events-none">
+        <div class="animate-[ping_0.8s_ease-out] rotate-180">
+            <div class="text-white text-[120px] drop-shadow-[0_0_40px_rgba(255,255,255,0.6)]">♡</div>
+        </div>
+    </div>
+
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        @Html.Partial("_Logo")
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+
+            <h2 class="text-white text-lg font-bold mb-6 text-center">
+                HOW IT WORKS
+            </h2>
+
+            <!-- Image -->
+            <div class="relative mb-8 flex items-center justify-center">
+                <div class="relative w-64 h-64 rounded-lg overflow-hidden shadow-2xl bg-cover bg-center tutorial-image">
+                    <div class="absolute inset-0 border-4 border-[#B4FF00]/30 rounded-lg"></div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="space-y-2 mb-6 text-center">
+                <p class="text-white text-sm">
+                    Swipe right if you like the track.
+                </p>
+                <p class="text-white text-sm">
+                    Swipe left if you don&apos;t like the track.
+                </p>
+            </div>
+
+            <!-- CTA -->
+            <p class="text-[#B4FF00] text-sm text-center">
+                Swipe right to get started
+            </p>
+        </div>
+
+        @Html.Partial("_BottomNav")
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        const swipeArea = document.getElementById('swipe-area');
+        const SWIPE_THRESHOLD = 75;
+
+        const likeHeart = document.getElementById('like-heart');
+        const dislikeHeart = document.getElementById('dislike-heart');
+
+        function showHeart(type) {
+            const el = type === 'like' ? likeHeart : dislikeHeart;
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+
+            setTimeout(() => {
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+
+                // Only navigate to review on like (swipe right)
+                if (type === 'like') {
+                    setTimeout(() => {
+                        goToReview();
+                    }, 200);
+                }
+            }, 800);
+        }
+
+        // Touch handling (mobile)
+        swipeArea.addEventListener('touchstart', function (e) {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        swipeArea.addEventListener('touchend', function (e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeDistance = touchEndX - touchStartX;
+
+            if (swipeDistance > SWIPE_THRESHOLD) {
+                showHeart('like');
+            } else if (swipeDistance < -SWIPE_THRESHOLD) {
+                showHeart('dislike');
+            }
+        }
+
+        // Keyboard handling (desktop)
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                showHeart('like');
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                showHeart('dislike');
+            }
+        });
+
+        function goToReview() {
+            window.location.href = '@Url.Action("Review", "Sources")';
+        }
+    </script>
+}
