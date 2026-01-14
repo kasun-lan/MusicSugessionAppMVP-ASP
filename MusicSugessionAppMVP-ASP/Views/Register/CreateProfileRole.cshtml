@@ -11,8 +11,9 @@
     <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
 
         <!-- Logo -->
-        <div class="flex justify-center mb-6">
-            <div class="text-[#B4FF00] text-3xl">◆</div>
+        <div class="flex justify-center mb-8">
+            <img src="~/images/Speed Crating logo NEW.png"
+                 class="w-10 h-auto object-contain" />
         </div>
 
         <!-- Content -->
@@ -74,12 +75,8 @@
             </form>
         </div>
 
-        <!-- Bottom nav -->
-        <div class="flex justify-around items-center pt-8 text-[#B4FF00] text-2xl">
-            <span>☰</span>
-            <span>👤</span>
-            <span>ℹ</span>
-        </div>
+        @await Html.PartialAsync("_BottomNav")
+
     </div>
 </div>
 

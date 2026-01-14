@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>How It Works – Speed Crating</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="stylesheet" href="./css/output.css">
+
+    <style>
+        .tutorial-image {
+            background-image: url('./images/tutorial-1.jpg');
+        }
+    </style>
+</head>
+<body class="bg-black">
+
+<div class="min-h-screen bg-black flex items-center justify-center p-4">
+    <div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900"
+         id="swipe-area">
+
+        <!-- Notch -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+        <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+            <!-- Logo -->
+            <div class="flex justify-center mb-4">
+                <svg width="60" height="60" viewBox="0 0 80 80" fill="none">
+                    <path d="M25 55L30 25L50 35L45 65L25 55Z"
+                          fill="#B4FF00"
+                          class="drop-shadow-[0_0_20px_rgba(180,255,0,0.6)]" />
+                    <rect x="28" y="30" width="18" height="12" rx="2"
+                          fill="#1A1A1A"
+                          transform="rotate(15 28 30)" />
+                </svg>
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1 flex flex-col">
+
+                <h2 class="text-white text-lg font-bold mb-6 text-center">
+                    HOW IT WORKS
+                </h2>
+
+                <!-- Image -->
+                <div class="relative mb-8 flex items-center justify-center">
+                    <div class="relative w-64 h-64 rounded-lg overflow-hidden shadow-2xl bg-cover bg-center tutorial-image">
+                        <div class="absolute inset-0 border-4 border-[#B4FF00]/30 rounded-lg"></div>
+                    </div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="space-y-2 mb-6 text-center">
+                    <p class="text-white text-sm">
+                        Swipe right if you like the track.
+                    </p>
+                    <p class="text-white text-sm">
+                        Swipe left if you don’t like the track.
+                    </p>
+                </div>
+
+                <!-- CTA -->
+                <p class="text-[#B4FF00] text-sm text-center">
+                    Swipe right to get started
+                </p>
+            </div>
+
+            <!-- Bottom Navigation -->
+            <div class="flex justify-around items-center pt-8 text-[#B4FF00] text-2xl">
+                <span>☰</span>
+                <span>👤</span>
+                <span>ℹ</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    const swipeArea = document.getElementById('swipe-area');
+    const SWIPE_THRESHOLD = 75;
+
+    // Touch handling (mobile)
+    swipeArea.addEventListener('touchstart', function (e) {
+        touchStartX = e.changedTouches[0].screenX;
+    });
+
+    swipeArea.addEventListener('touchend', function (e) {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    });
+
+    function handleSwipe() {
+        const swipeDistance = touchEndX - touchStartX;
+
+        if (swipeDistance > SWIPE_THRESHOLD) {
+            goToArtists();
+        }
+    }
+
+    // Keyboard handling (desktop)
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            goToArtists();
+        }
+    });
+
+    function goToArtists() {
+        window.location.href = 'artists.html';
+    }
+</script>
+
+</body>
+</html>
