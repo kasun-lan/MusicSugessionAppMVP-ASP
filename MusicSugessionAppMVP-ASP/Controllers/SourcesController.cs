@@ -86,6 +86,23 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             //    return RedirectToAction("Login", "Home");
 
             ViewData["PostLogin"] = postLogin;
+
+            // Resolve selected artists (crate source) from current crate session
+            var sessionKey = HttpContext.Session.Id;
+            if (_crates.TryGetValue(sessionKey, out var crate) && crate.SeedArtists != null)
+            {
+                var artistNames = crate.SeedArtists
+                    .OrderBy(sa => sa.Position)
+                    .Select(sa => sa.Name)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .ToList();
+
+                if (artistNames.Count > 0)
+                {
+                    ViewData["CrateSource"] = string.Join(", ", artistNames);
+                }
+            }
+
             return View();
         }
 

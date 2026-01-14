@@ -42,7 +42,7 @@
         <div class="mb-4">
             <p class="text-white/60 text-xs mb-1">Crate source:</p>
             <p class="text-white text-sm truncate">
-                Artist One, Artist Two, Artist Three
+                @(ViewData["CrateSource"] ?? " ")
             </p>
         </div>
 
@@ -589,13 +589,15 @@
                 trackImageEl.classList.add('hidden');
             }
 
-            // 🔊 Auto-play preview if available and allowed
-            if (track.previewUrl && hasUserInteracted) {
+            // 🔊 Auto-play preview if available
+            // We now always attempt to play, including for the very first track.
+            // Browser autoplay policies may still block this, but from the second track
+            // onward a user gesture will typically have occurred and playback will work.
+            if (track.previewUrl) {
                 audioEl.src = track.previewUrl;
                 audioEl.volume = 1.0;
 
                 audioEl.play().catch(err => {
-                    // Autoplay may still fail silently on some browsers
                     console.debug('Preview autoplay blocked:', err);
                 });
             }
