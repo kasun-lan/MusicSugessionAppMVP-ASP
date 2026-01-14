@@ -428,7 +428,13 @@
         const audioEl = document.getElementById('preview-audio');
         let hasUserInteracted = false;
 
+        function markUserInteraction() {
+            hasUserInteracted = true;
+        }
    
+        document.addEventListener('keydown', markUserInteraction, { once: true });
+        document.addEventListener('click', markUserInteraction, { once: true });
+        document.addEventListener('touchstart', markUserInteraction, { once: true });
 
         function stopPreview() {
             if (!audioEl) return;
@@ -795,32 +801,6 @@
         const spotifySuccess = document.getElementById('spotify-success');
         const connectSpotifyBtn = document.getElementById('connect-spotify');
         const continueFromSpotifyBtn = document.getElementById('continue-from-spotify');
-
-
-        function unlockAudio() {
-            if (!audioEl) return;
-
-            audioEl.muted = true;
-            audioEl.play()
-                .then(() => {
-                    audioEl.pause();
-                    audioEl.currentTime = 0;
-                    audioEl.muted = false;
-                    hasUserInteracted = true;
-                })
-                .catch(() => {
-                    // ignore
-                });
-
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
-            document.removeEventListener('keydown', unlockAudio);
-        }
-
-        document.addEventListener('click', unlockAudio, { once: true });
-        document.addEventListener('touchstart', unlockAudio, { once: true });
-        document.addEventListener('keydown', unlockAudio, { once: true });
-
 
         // Open Spotify connect screen
         spotifyOption.addEventListener('click', () => {
