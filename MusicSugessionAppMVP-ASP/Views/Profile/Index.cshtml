@@ -1,0 +1,84 @@
+﻿@model MusicSugessionAppMVP_ASP.Models.ProfileViewModel
+
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900">
+
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        <h2 class="text-white text-xl font-bold mb-6">
+            MY ACCOUNT
+        </h2>
+
+        @if (ViewBag.Success == true)
+        {
+            <div class="bg-green-500/20 border-2 border-green-500 text-green-400 px-4 py-3 rounded mb-4 text-sm">
+                Profile updated successfully
+            </div>
+        }
+
+        <form asp-action="Index" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="space-y-4 mb-8">
+
+                <input asp-for="Name"
+                       placeholder="Name"
+                       class="w-full bg-transparent border-2 border-white/30
+                              focus:border-[#B4FF00] text-white
+                              placeholder-gray-500 py-3 px-4 rounded outline-none" />
+                <span asp-validation-for="Name" class="text-red-400 text-sm"></span>
+
+                <input asp-for="Email"
+                       type="email"
+                       placeholder="Email"
+                       class="w-full bg-transparent border-2 border-white/30
+                              focus:border-[#B4FF00] text-white
+                              placeholder-gray-500 py-3 px-4 rounded outline-none" />
+                <span asp-validation-for="Email" class="text-red-400 text-sm"></span>
+
+                <select asp-for="PreferredStreamingPlatformId"
+                        class="w-full bg-transparent border-2 border-white/30
+                        focus:border-[#B4FF00] text-white
+                        py-3 px-4 rounded outline-none
+                        [&>
+                    option]:bg-black [&>option]:text-white">
+                    @foreach (var p in Model.StreamingPlatforms)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+
+                <input asp-for="NewPassword"
+                       type="password"
+                       placeholder="New password (optional)"
+                       class="w-full bg-transparent border-2 border-white/30
+                              focus:border-[#B4FF00] text-white
+                              placeholder-gray-500 py-3 px-4 rounded outline-none" />
+
+                <input asp-for="ConfirmPassword"
+                       type="password"
+                       placeholder="Confirm new password"
+                       class="w-full bg-transparent border-2 border-white/30
+                              focus:border-[#B4FF00] text-white
+                              placeholder-gray-500 py-3 px-4 rounded outline-none" />
+            </div>
+
+            <button type="submit"
+                    class="block w-full text-center bg-[#B4FF00] hover:bg-[#A0E600]
+                           text-black font-bold py-4 px-6 rounded transition-colors">
+                Update profile
+            </button>
+        </form>
+
+        @await Html.PartialAsync("_BottomNav")
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

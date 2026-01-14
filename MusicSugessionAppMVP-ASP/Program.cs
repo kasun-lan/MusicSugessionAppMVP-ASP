@@ -1,4 +1,7 @@
+using Microsoft.Extensions.Options;
+using MusicSugessionAppMVP_ASP.Models;
 using MusicSugessionAppMVP_ASP.Persistance;
+using MusicSugessionAppMVP_ASP.Services;
 
 namespace MusicSugessionAppMVP_ASP
 {
@@ -14,6 +17,15 @@ namespace MusicSugessionAppMVP_ASP
             builder.Services.AddPersistence(
                 builder.Configuration.GetConnectionString("DefaultConnection")
             );
+
+            builder.Services.Configure<EmailSettings>(
+            builder.Configuration.GetSection("Email"));
+
+            builder.Services.AddSingleton(sp =>
+                sp.GetRequiredService<IOptions<EmailSettings>>().Value);
+
+            builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();

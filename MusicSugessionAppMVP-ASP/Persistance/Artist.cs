@@ -18,6 +18,9 @@ namespace MusicSugessionAppMVP_ASP.Persistance
 
         public ICollection<SessionInputArtist> InputArtists { get; set; }
         public ICollection<SwipeEvent> SwipeEvents { get; set; }
+
+        public ICollection<SessionExport> SessionExports { get; set; } = new List<SessionExport>();
+
     }
 
     public class SessionExport
@@ -240,6 +243,7 @@ namespace MusicSugessionAppMVP_ASP.Persistance
 
         public string Name { get; set; } // Spotify, Apple Music, Deezer
     }
+
 
     public enum DeviceType
     {

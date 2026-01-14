@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MusicSugessionAppMVP_ASP.Models;
 using MusicSugessionAppMVP_ASP.Persistance;
+using MusicSugessionAppMVP_ASP.Security;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -96,7 +97,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             }
 
             // Hash password
-            var passwordHash = HashPassword(model.Password);
+            var passwordHash = PasswordHasher.Hash(model.Password);
 
             // Create user
             var user = new User
@@ -183,20 +184,13 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             _db.SaveChanges();
 
             // Auto-login the user
-            HttpContext.Session.SetString("UserName", user.Name);
+            HttpContext.Session.SetString("Email", user.Email);
             HttpContext.Session.SetString("IsAuthenticated", "true");
 
             return RedirectToAction("Index", "Home");
         }
 
-        private string HashPassword(string password)
-        {
-            using (var sha256 = SHA256.Create())
-            {
-                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return Convert.ToBase64String(hashedBytes);
-            }
-        }
+      
     }
 }
 

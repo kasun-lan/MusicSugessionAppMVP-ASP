@@ -5,12 +5,14 @@ using MusicSugessionAppMVP_ASP.Persistance;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
 
 namespace MusicSugessionAppMVP_ASP.Controllers
 {
     public class SourcesController : Controller
     {
         private readonly Persistence _db;
+        private readonly IEmailService _emailService;
 
         // NOTE: Session Terminology
         // - "User Login Session" = ASP.NET HttpContext.Session (managed by ASP.NET, tied to browser cookie)
@@ -19,13 +21,36 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         // To support multiple crate sessions per user login: generate unique crate session IDs (e.g., GUID)
         // and store the active crate session ID in HttpContext.Session
         static ConcurrentDictionary<string, CrateSessionState> _crates = new();
-        private const int PrimaryRefillThreshold = 3;
+        private const int PrimaryRefillThreshold = 10;
         private const int PrimaryRefillBatchSize = 5;
 
-        public SourcesController(Persistence db)
+        public SourcesController(Persistence db, IEmailService emailService)
         {
             _db = db;
+            _emailService = emailService;
         }
+
+        [HttpGet]
+        public IActionResult CanSkipExportOverlay()
+        {
+            var sessionKey = HttpContext.Session.Id;
+
+            // 1. Logged-in user with email
+            var userEmail = HttpContext.Session.GetString("Email");
+            if (!string.IsNullOrWhiteSpace(userEmail))
+                return Json(new { canSkip = true });
+
+            // 2. Email already registered in current crate session
+            if (_crates.TryGetValue(sessionKey, out var crate))
+            {
+                if (!string.IsNullOrWhiteSpace(crate.RegisteredEmail))
+                    return Json(new { canSkip = true });
+            }
+
+            // Otherwise, we do NOT know where to export
+            return Json(new { canSkip = false });
+        }
+
 
 
         public IActionResult Index()
@@ -112,6 +137,16 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             return Ok();
         }
 
+        private string? ResolveEmail(CrateSessionState crate)
+        {
+            if (!string.IsNullOrWhiteSpace(crate.RegisteredEmail))
+                return crate.RegisteredEmail;
+
+            var email = HttpContext.Session.GetString("Email");
+            return string.IsNullOrWhiteSpace(email) ? null : email;
+        }
+
+
 
         [HttpPost]
         public async Task<IActionResult> EndSession()
@@ -152,10 +187,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 {
                     if (!crate.EmailSent)
                     {
-                        var emailService = new FakeEmailService();
+                        var email = ResolveEmail(crate);
+                        if (email == null)
+                            return BadRequest("Email not available.");
 
-                        await emailService.SendPlaylistAsync(
-                            crate.RegisteredEmail,
+                        await _emailService.SendPlaylistAsync(
+                            email,
                             crate.LikedTracks);
 
                         lock (crate)
@@ -242,16 +279,21 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 SelectedGenres = ExtractGenres(resolvedArtists),
                 StartedAtUtc = DateTime.UtcNow,
                 DeviceType = Persistance.DeviceType.Desktop,//TODO
-                LifecycleState = CrateLifecycleState.Active
+                LifecycleState = CrateLifecycleState.Active,
+                
             };
 
+
+//get the logged in user email
+            var userEmail = HttpContext.Session.GetString("Email");
+            var user = _db.Users.FirstOrDefault(u => u.Email == userEmail);
             // Create persistent Session row
             var dbSession = new Session
             {
                 Id = Guid.NewGuid(),
                 StartedAtUtc = crate.StartedAtUtc,
                 EndedAtUtc = null,
-                UserId = null,
+                UserId = user?.Id,
                 User = null!,
                 DeviceType = crate.DeviceType
             };
@@ -354,10 +396,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             {
                 if (!crate.EmailSent)
                 {
-                    var emailService = new FakeEmailService();
+                    var email = ResolveEmail(crate);
+                    if (email == null)
+                        return BadRequest("Email not available.");
 
-                    await emailService.SendPlaylistAsync(
-                        crate.RegisteredEmail,
+                    await _emailService.SendPlaylistAsync(
+                        email,
                         crate.LikedTracks);
 
                     lock (crate)
@@ -547,7 +591,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                             crate.BackupQueue.Add(t);
 
                         // equivalent of "open review window"
-                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 1)
+                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 5)
                             crate.IsWarm = true;
                     }
 
@@ -639,7 +683,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                         foreach (var t in shuffled.Skip(1))
                             crate.BackupQueue.Add(t);
 
-                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 3)
+                        if (!crate.IsWarm && crate.PrimaryQueue.Count >= 2)
                             crate.IsWarm = true;
                     }
 

@@ -21,7 +21,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             var isAuthenticated =
                 HttpContext.Session.GetString("IsAuthenticated") == "true";
 
-            if(isAuthenticated)
+            if (isAuthenticated)
                 ViewBag.IsAuthenticated = true;
 
             return View();
@@ -57,7 +57,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
         [HttpPost]
-        public IActionResult Login(string username, string password, string? returnUrl)
+        public IActionResult Login(string email, string password, string? returnUrl)
         {
             if (HttpContext.Session.GetString("IsAuthenticated") == "true")
             {
@@ -66,29 +66,23 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
             //check whether user exists in the database
-            var user = _db.Users.FirstOrDefault(u => u.Email == username);
+            var user = _db.Users.FirstOrDefault(u => u.Email == email);
             if (user == null)
             {
                 ViewBag.Error = "User not found";
                 return RedirectToAction("Login", "Home");
             }
 
-            // Simulated authentication
-            if (!string.IsNullOrWhiteSpace(username))
+            HttpContext.Session.SetString("Email", email);
+            HttpContext.Session.SetString("IsAuthenticated", "true");
+
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             {
-                HttpContext.Session.SetString("UserName", username);
-                HttpContext.Session.SetString("IsAuthenticated", "true");
-
-                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                {
-                    return Redirect(returnUrl);
-                }
-
-                return RedirectToAction("Index", "Home");
+                return Redirect(returnUrl);
             }
 
-            ViewBag.Error = "Invalid credentials";
-            return View();
+            return RedirectToAction("Index", "Home");
+
         }
 
 

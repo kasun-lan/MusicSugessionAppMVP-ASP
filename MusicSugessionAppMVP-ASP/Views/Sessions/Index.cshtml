@@ -1,0 +1,37 @@
+﻿@model IEnumerable<MusicSugessionAppMVP_ASP.Persistance.Session>
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden">
+
+    <div class="p-6 pt-16 text-white">
+
+        <h1 class="text-xl font-bold mb-6">YOUR LISTS</h1>
+
+        <div class="space-y-4">
+            @foreach (var session in Model)
+            {
+                <a asp-action="Details"
+                   asp-route-id="@session.Id"
+                   class="block p-4 border border-white/20 rounded hover:border-[#B4FF00] transition">
+
+                    <div class="text-sm text-white/70">
+                        @session.StartedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                    </div>
+
+                    <div class="mt-1 text-white font-medium">
+                        @(session.InputArtists?.Count() ?? 0) artists
+                    </div>
+                </a>
+            }
+
+            @if (!Model.Any())
+            {
+                <div class="text-white/50 text-sm text-center">
+                    No lists yet.
+                </div>
+            }
+        </div>
+
+    </div>
+
+    @await Html.PartialAsync("_BottomNav")
+</div>

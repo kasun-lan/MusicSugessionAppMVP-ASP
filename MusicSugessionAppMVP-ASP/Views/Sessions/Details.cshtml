@@ -1,0 +1,53 @@
+﻿@using MusicSugessionAppMVP_ASP.Persistance
+@model MusicSugessionAppMVP_ASP.Persistance.Session
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden">
+
+    <div class="p-6 pt-16 text-white space-y-6">
+
+        <div>
+            <h1 class="text-lg font-bold">
+                SPEED CRATING
+            </h1>
+            <div class="text-sm text-white/60">
+                @Model.StartedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-sm uppercase text-white/50 mb-2">Seed Artists</h2>
+            <div class="space-y-1">
+                @foreach (var a in Model.InputArtists.OrderBy(x => x.Position))
+                {
+                    <div>@a.Artist.Name</div>
+                }
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-sm uppercase text-white/50 mb-2">Liked Tracks</h2>
+
+            <div class="space-y-3">
+                @foreach (var swipe in Model.SwipeEvents.Where(x => x.Direction == SwipeDirection.Like))
+                {
+                    <div class="border-b border-white/10 pb-2">
+                        <div class="font-medium">@swipe.Track.Name</div>
+                        <div class="text-sm text-white/60">
+                            @swipe.Track.Artist.Name
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Model.SessionExports.Any())
+        {
+            <div class="text-[#B4FF00] text-sm">
+                Generate share link for this list
+            </div>
+        }
+
+    </div>
+
+    @await Html.PartialAsync("_BottomNav")
+</div>
