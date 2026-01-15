@@ -1,8 +1,30 @@
 @* Logo Partial View *@
 <!-- Logo -->
 <div class="flex justify-center mb-8">
-    <a href="@Url.Action("Index", "Home")" class="cursor-pointer">
+    <a href="@Url.Action("Index", "Home")" class="cursor-pointer logo-link">
         <img src="~/images/Speed Crating logo NEW.png"
              class="w-20 h-auto object-contain hover:opacity-80 transition-opacity" />
     </a>
 </div>
+
+<script>
+    (function () {
+        const logoLink = document.querySelector('.logo-link');
+        if (!logoLink) return;
+
+        // Check if there's an active crate session and disable logo link accordingly
+        fetch('@Url.Action("HasActiveCrateSession", "Sources")')
+            .then(response => response.json())
+            .then(data => {
+                if (data.hasActiveSession) {
+                    logoLink.style.pointerEvents = 'none';
+                    logoLink.style.opacity = '0.5';
+                    logoLink.style.cursor = 'not-allowed';
+                    logoLink.href = 'javascript:void(0)';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking active session:', error);
+            });
+    })();
+</script>

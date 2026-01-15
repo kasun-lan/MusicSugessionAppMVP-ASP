@@ -1,0 +1,75 @@
+@{
+    ViewData["Title"] = "Terms & Conditions";
+}
+
+<div class="relative w-full max-w-[375px] h-[812px] bg-black rounded-[3rem] overflow-hidden shadow-2xl border-8 border-gray-900">
+
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <!-- Content -->
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        @Html.Partial("_Logo")
+
+        <div class="flex-1 flex flex-col">
+
+            <!-- Header -->
+            <div class="flex items-center mb-4">
+                <button id="close-terms" class="text-[#B4FF00] text-xl mr-3">
+                    ←
+                </button>
+                <h3 class="text-white font-bold text-base uppercase">
+                    Terms &amp; Conditions
+                </h3>
+            </div>
+
+            <!-- Scrollable content -->
+            <div class="flex-1 overflow-y-auto text-white/70 text-sm leading-relaxed pr-2">
+                <p class="mb-4">
+                    Sed ut perspiciatis unde omnis iste natus error sit voluptatem
+                    accusantium doloremque laudantium, totam rem aperiam, eaque ipsa
+                    quae ab illo inventore veritatis et quasi architecto beatae vitae
+                    dicta sunt explicabo.
+                </p>
+
+                <p class="mb-4">
+                    Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit
+                    aut fugit, sed quia consequuntur magni dolores eos qui ratione
+                    voluptatem sequi nesciunt.
+                </p>
+
+                <p class="mb-4">
+                    Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet,
+                    consectetur, adipisci velit, sed quia non numquam eius modi tempora
+                    incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+                </p>
+
+                <p class="mb-4">
+                    Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis
+                    suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.
+                </p>
+            </div>
+        </div>
+
+        @await Html.PartialAsync("_BottomNav")
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const closeBtn = document.getElementById('close-terms');
+            if (!closeBtn) return;
+
+            closeBtn.addEventListener('click', () => {
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+                window.location.href = '@Url.Action("Index", "Sources")';
+            });
+        })();
+    </script>
+}
+

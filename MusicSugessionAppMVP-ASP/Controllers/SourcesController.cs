@@ -51,6 +51,20 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             return Json(new { canSkip = false });
         }
 
+        [HttpGet]
+        public IActionResult HasActiveCrateSession()
+        {
+            var sessionKey = HttpContext.Session.Id;
+            
+            if (_crates.TryGetValue(sessionKey, out var crate))
+            {
+                var isActive = crate.LifecycleState == CrateLifecycleState.Active;
+                return Json(new { hasActiveSession = isActive });
+            }
+
+            return Json(new { hasActiveSession = false });
+        }
+
 
 
         public IActionResult Index()
@@ -133,6 +147,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
         [HttpGet]
         public IActionResult Tutorial()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult TermsAndConditions()
         {
             return View();
         }
