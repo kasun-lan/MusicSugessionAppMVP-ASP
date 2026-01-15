@@ -222,23 +222,37 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // 🔒 Guard: no export medium selected
+            // ✅ If user is logged in (or email otherwise known), auto-select email export.
+            // This prevents re-prompting at end-session when we already know where to send.
             if (crate.SelectedExportMedium == ExportMedium.None)
-                return Json(new { status = "no-medium" });
+            {
+                var resolvedEmail = ResolveEmail(crate);
+                if (!string.IsNullOrWhiteSpace(resolvedEmail))
+                {
+                    crate.SelectedExportMedium = ExportMedium.Email;
+                    crate.RegisteredEmail ??= resolvedEmail;
+                }
+                else
+                {
+                    // 🔒 Guard: no export medium selected and no email known
+                    return Json(new { status = "no-medium" });
+                }
+            }
 
             // 🔒 Guard: email export requires email
             if (crate.SelectedExportMedium == ExportMedium.Email)
             {
-                if (string.IsNullOrWhiteSpace(crate.RegisteredEmail))
+                // If user is logged in, use their session email even if not explicitly registered this run.
+                var email = ResolveEmail(crate);
+                if (string.IsNullOrWhiteSpace(email))
                     return Json(new { status = "missing-email" });
+
+                // Keep crate state consistent for the rest of the flow (views + CanSkipExportOverlay)
+                crate.RegisteredEmail ??= email;
                 try
                 {
                     if (!crate.EmailSent)
                     {
-                        var email = ResolveEmail(crate);
-                        if (email == null)
-                            return BadRequest("Email not available.");
-
                         await _emailService.SendPlaylistAsync(
                             email,
                             crate.LikedTracks);
@@ -335,6 +349,15 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 LifecycleState = CrateLifecycleState.Active,
                 
             };
+
+            // ✅ Logged-in users: default export destination is their account email.
+            // This prevents the export prompt from reappearing at end-session.
+            if (!string.IsNullOrWhiteSpace(userEmail))
+            {
+                crate.SelectedExportMedium = ExportMedium.Email;
+                crate.RegisteredEmail = userEmail.Trim();
+                crate.EmailRegisteredAtUtc = DateTimeOffset.UtcNow;
+            }
 
 
 //get the logged in user email
