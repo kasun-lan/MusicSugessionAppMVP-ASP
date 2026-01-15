@@ -1,3 +1,14 @@
+@{
+    var isHomeIndex =
+        string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), "Home", StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "Index", StringComparison.OrdinalIgnoreCase);
+
+    var bodyStyle = isHomeIndex
+        ? "background-color: black;"
+        : $"background-image: url('{Url.Content("~/images/crate-digging.webp")}'); background-size: cover; background-position: center; background-repeat: no-repeat;";
+
+}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,13 +20,12 @@
 
     @RenderSection("Head", required: false)
 </head>
-<body class="bg-black">
+<body style="@bodyStyle">
 
-    <div class="min-h-screen bg-black flex items-center justify-center p-4">
+    <div class="min-h-screen flex items-center justify-center p-4">
         @RenderBody()
     </div>
 
     @RenderSection("Scripts", required: false)
 </body>
 </html>
-

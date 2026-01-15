@@ -118,7 +118,7 @@ namespace MusicSugessionAppMVP_ASP.Services
                             font-size: 14px;
                             margin: 0;
                         ">
-                            Hand-picked. Fast. No filler.
+                            To rapidly go through crates of music in the pursuit of finding hidden gems.
                         </p>
                     </td>
                 </tr>
