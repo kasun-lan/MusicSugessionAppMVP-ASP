@@ -365,7 +365,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             {
                 SelectedGenres = ExtractGenres(resolvedArtists),
                 StartedAtUtc = DateTime.UtcNow,
-                DeviceType = Persistance.DeviceType.Desktop,//TODO
+                DeviceType = DetectDeviceType(HttpContext),
                 LifecycleState = CrateLifecycleState.Active,
                 
             };
@@ -1112,6 +1112,38 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 else
                     stats.TotalDislikes++;
             }
+        }
+
+        /// <summary>
+        /// Detects device type from the User-Agent header.
+        /// Returns Mobile for mobile devices, Desktop otherwise.
+        /// </summary>
+        private static Persistance.DeviceType DetectDeviceType(HttpContext httpContext)
+        {
+            var userAgent = httpContext.Request.Headers["User-Agent"].ToString();
+            
+            if (string.IsNullOrWhiteSpace(userAgent))
+                return Persistance.DeviceType.Desktop;
+
+            // Convert to lowercase for case-insensitive matching
+            var ua = userAgent.ToLowerInvariant();
+
+            // Common mobile device indicators
+            var mobileIndicators = new[]
+            {
+                "mobile", "android", "iphone", "ipod", "ipad", "blackberry",
+                "windows phone", "opera mini", "iemobile", "webos", "palm"
+            };
+
+            // Check if User-Agent contains any mobile indicators
+            foreach (var indicator in mobileIndicators)
+            {
+                if (ua.Contains(indicator))
+                    return Persistance.DeviceType.Mobile;
+            }
+
+            // Default to Desktop if no mobile indicators found
+            return Persistance.DeviceType.Desktop;
         }
     }
 }
