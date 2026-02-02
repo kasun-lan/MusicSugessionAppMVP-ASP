@@ -1,0 +1,213 @@
+﻿@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+@{
+    ViewData["Title"] = "Menu";
+    Layout = "_Layout";
+    var isAuthenticated =
+        HttpContextAccessor.HttpContext?
+            .Session.GetString("IsAuthenticated") == "true";
+}
+
+@section Head {
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .menu-container {
+            min-height: 100vh;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Logo Section */
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            padding-top: 2rem;
+            padding-bottom: 3rem;
+        }
+
+        .logo-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .logo-square {
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 0.125rem;
+        }
+
+        .logo-square-1 {
+            background: linear-gradient(to bottom right, #facc15, #84cc16);
+            transform: rotate(-12deg);
+        }
+
+        .logo-square-2 {
+            background: linear-gradient(to bottom right, #84cc16, #22c55e);
+            transform: rotate(12deg);
+        }
+        /* Menu Header */
+
+        .menu-header {
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+            .menu-header h1 {
+                font-size: 0.875rem;
+                font-weight: 500;
+                letter-spacing: 0.025em;
+            }
+        /* Menu Items */
+
+        .menu-items {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            padding-bottom: 5rem;
+        }
+
+        .menu-link {
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+            .menu-link:hover {
+                color: #84cc16;
+            }
+        /* Bottom Navigation */
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #000;
+            border-top: 1px solid #171717;
+        }
+
+        .bottom-nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            max-width: 28rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav-button {
+            background: none;
+            border: none;
+            color: #84cc16;
+            cursor: pointer;
+            padding: 0;
+            transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+            .nav-button:hover {
+                color: #bef264;
+            }
+
+        .nav-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+    </style>
+}
+
+
+<div class="relative bg-black w-full bg-black max-w-[375px] h-[812px]">
+
+
+
+    <!-- Content -->
+    <div class="relative h-full flex flex-col justify-between p-8 pt-16 pb-24">
+
+        @Html.Partial("_Logo")
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+
+          
+            <h2 class="text-white text-xl font-bold mb-6">
+               MENU
+            </h2>
+
+
+            <!-- Menu Items -->
+            <nav class="menu-items">
+                <a href="#" class="menu-link">Lists</a>
+                <a href="#" class="menu-link">Profile</a>
+                <a href="#" class="menu-link">Terms & Conditions</a>
+                @if (isAuthenticated)
+                {
+                    <a href="#" class="menu-link">Logout</a>
+                }
+            </nav>
+
+
+        </div>
+
+        @await Html.PartialAsync("_BottomNav")
+
+    </div>
+</div>
+
+@section Scripts {
+
+    <script>
+        const artist1 = document.getElementById('artist1');
+        const artist2 = document.getElementById('artist2');
+        const artist3 = document.getElementById('artist3');
+        const button = document.getElementById('createCrateBtn');
+
+        function validateInputs() {
+            const allFilled =
+                artist1.value.trim() &&
+                artist2.value.trim() &&
+                artist3.value.trim();
+
+            if (allFilled) {
+                button.disabled = false;
+                button.classList.remove('opacity-30', 'cursor-not-allowed');
+                button.classList.add('hover:bg-[#A0E600]');
+            } else {
+                button.disabled = true;
+                button.classList.add('opacity-30', 'cursor-not-allowed');
+                button.classList.remove('hover:bg-[#A0E600]');
+            }
+        }
+
+        artist1.addEventListener('input', validateInputs);
+        artist2.addEventListener('input', validateInputs);
+        artist3.addEventListener('input', validateInputs);
+    </script>
+}

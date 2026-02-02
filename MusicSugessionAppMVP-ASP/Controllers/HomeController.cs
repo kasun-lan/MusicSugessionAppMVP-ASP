@@ -28,6 +28,11 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         }
 
 
+        public IActionResult Menu()
+        {
+            return View();
+        }
+
         [HttpGet]
         public IActionResult AuthStatus()
         {
