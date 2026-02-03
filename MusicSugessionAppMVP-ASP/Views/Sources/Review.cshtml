@@ -37,10 +37,10 @@
                      class="w-20 h-auto object-contain" />
             </div>
             <!-- End session button - positioned absolutely on the right -->
-            <button id="end-session-btn"
-                    class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#B4FF00] flex items-center justify-center">
-                <div class="w-3 h-3 bg-black"></div>
-            </button>
+<button id="end-session-btn"
+        class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#B4FF00] flex items-center justify-center hidden">
+    <div class="w-3 h-3 bg-black"></div>
+</button>
         </div>
 
         <!-- Crate source -->
@@ -807,6 +807,7 @@
                     // No more tracks available, show loading and resume polling
                     loadingState.classList.remove('hidden');
                     trackContent.classList.add('hidden');
+                    endSessionBtn.classList.add('hidden');
                     currentTrack = null;
                     if (!isPolling) {
                         startPolling();
@@ -816,20 +817,22 @@
         }
 
         function startPolling() {
-            if (isPolling) return;
+    if (isPolling) return;
 
-            isPolling = true;
-            pollInterval = setInterval(async () => {
-                const track = await loadNextTrack();
-                if (track) {
-                    // Crate is warm and has tracks
-                    stopPolling();
-                    loadingState.classList.add('hidden');
-                    trackContent.classList.remove('hidden');
-                    renderTrack(track);
-                }
-            }, 1000); // Poll every second
+    isPolling = true;
+    pollInterval = setInterval(async () => {
+        const track = await loadNextTrack();
+        if (track) {
+            // Crate is warm and has tracks
+            stopPolling();
+            loadingState.classList.add('hidden');
+            trackContent.classList.remove('hidden');
+            // Show end session button when first track is displayed
+            endSessionBtn.classList.remove('hidden');
+            renderTrack(track);
         }
+    }, 1000); // Poll every second
+}
 
         function stopPolling() {
             if (pollInterval) {
@@ -1041,6 +1044,7 @@
                     // No more tracks available yet, show loading and resume polling
                     loadingState.classList.remove('hidden');
                     trackContent.classList.add('hidden');
+                    endSessionBtn.classList.add('hidden');
                     if (!isPolling) {
                         startPolling();
                     }
