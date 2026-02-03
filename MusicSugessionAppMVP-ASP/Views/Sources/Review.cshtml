@@ -45,7 +45,7 @@
 
         <!-- Crate source -->
         <div class="mb-4">
-            <p class="text-white/60 text-xs mb-1">Crate source:</p>
+            <p class="text-white text-xs mb-1">Crate source:</p>
             <p class="text-white text-sm truncate">
                 @(ViewData["CrateSource"] ?? " ")
             </p>
@@ -53,7 +53,7 @@
 
         <!-- Loading state -->
         <div id="loading-state" class="flex-1 flex flex-col items-center justify-center mb-6">
-            <div class="text-white/60 text-sm mb-4 text-center">
+            <div class="text-white text-sm mb-4 text-center">
                 Please wait, tracks are being prepared...
             </div>
             <div class="w-8 h-8 border-4 border-[#B4FF00] border-t-transparent rounded-full animate-spin"></div>
@@ -77,8 +77,8 @@
             <!-- Track info -->
             <div class="text-center mb-8">
                 <h2 id="track-title" class="text-white text-lg font-bold mb-1"></h2>
-                <p id="track-artist" class="text-white/60 text-sm"></p>
-                <p id="track-album" class="text-white/40 text-sm italic"></p>
+                <p id="track-artist" class="text-white text-sm"></p>
+                <p id="track-album" class="text-white text-sm italic"></p>
             </div>
         </div>
         <audio id="preview-audio" preload="none"></audio>
@@ -107,27 +107,27 @@
                 </p>
 
                 <div class="space-y-3">
-                    <button id="email-option" class="w-full border-2 border-white/30 hover:border-white/50
+                    <button id="email-option" class="w-full border-2 border-white hover:border-white/50
                                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send list to my email
                     </button>
 
-                    <button id="spotify-option" class="w-full border-2 border-white/30 hover:border-white/50
+                    <button id="spotify-option" class="w-full border-2 border-white hover:border-white/50
                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send to my Spotify profile
                     </button>
 
-                    <button class="export-close w-full border-2 border-white/30 hover:border-white/50
+                    <button class="export-close w-full border-2 border-white hover:border-white/50
                                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send to my Apple Music profile
                     </button>
 
-                    <button class="export-close w-full border-2 border-white/30 hover:border-white/50
+                    <button class="export-close w-full border-2 border-white hover:border-white/50
                                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send to my Deezer profile
                     </button>
 
-                    <button class="export-close w-full border-2 border-white/30 hover:border-white/50
+                    <button class="export-close w-full border-2 border-white hover:border-white/50
                                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send to my SoundCloud profile
                     </button>
@@ -140,7 +140,7 @@
                     Send playlist to your email
                 </h3>
 
-                <input id="email-input" type="email" placeholder="Enter your email" class="w-full bg-transparent border-2 border-white/30
+                <input id="email-input" type="email" placeholder="Enter your email" class="w-full bg-transparent border-2 border-white
                        focus:border-[#B4FF00] text-white
                        placeholder-gray-500 py-3 px-4 rounded
                        outline-none transition-colors mb-4" />
@@ -150,7 +150,7 @@
                     Register email
                 </button>
 
-                <button id="back-to-options" class="w-full border-2 border-white/30 hover:border-white/50
+                <button id="back-to-options" class="w-full border-2 border-white hover:border-white/50
                            text-white text-sm py-3 px-4 rounded transition-colors">
                     Back
                 </button>
@@ -169,7 +169,7 @@
 
                 <p class="text-white/40 text-xs text-center">
                     By entering your email address you agree to our
-                    <button id="open-terms" class="underline text-white/60 hover:text-white">
+                    <button id="open-terms" class="underline text-white hover:text-white">
                         terms &amp; conditions
                     </button>
 
@@ -190,7 +190,7 @@
                 </div>
 
                 <!-- Scrollable content -->
-                <div class="flex-1 overflow-y-auto text-white/70 text-sm leading-relaxed pr-2">
+                <div class="flex-1 overflow-y-auto text-white text-sm leading-relaxed pr-2">
                     <p class="mb-4">
                         Sed ut perspiciatis unde omnis iste natus error sit voluptatem
                         accusantium doloremque laudantium, totam rem aperiam, eaque ipsa
@@ -232,7 +232,7 @@
                     Connect with Spotify
                 </button>
 
-                <p class="text-white/40 text-xs text-center">
+                <p class="text-white text-xs text-center">
                     By connecting you agree to our
                     <button id="spotify-terms" class="underline text-white/60 hover:text-white">
                         terms &amp; conditions
@@ -272,11 +272,11 @@
                     Your list has been sent to your Spotify profile
                 </p>
 
-                <p class="text-white/60 text-sm mb-8">
+                <p class="text-white text-sm mb-8">
                     You’ll find it in your playlist library
                 </p>
 
-                <p class="text-white/40 text-sm mb-8">
+                <p class="text-white text-sm mb-8">
                     RECOMMENDATION: SAVE YOUR LIST
                 </p>
 
@@ -314,7 +314,7 @@
                 End this session and send list
             </button>
 
-            <button id="continue-session" class="w-full border-2 border-white/30 hover:border-white/50
+            <button id="continue-session" class="w-full border-2 border-white hover:border-white/50
                        text-white py-3 px-4 rounded transition-colors">
                 Continue session
             </button>
@@ -354,11 +354,11 @@
 
             <!-- LOGGED-OUT VARIANT -->
             <div id="email-logged-out" class="hidden">
-                <p class="text-white/60 text-sm mb-8">
+                <p class="text-white text-sm mb-8">
                     RECOMMENDATION: SAVE YOUR LIST
                 </p>
 
-                <p class="text-white/40 text-sm mb-8">
+                <p class="text-white text-sm mb-8">
                     To fill your crate with even better music next time,
                     we recommend you to create a profile and save your list.
                 </p>
@@ -389,7 +389,7 @@
             </p>
 
             <!-- Message -->
-            <p class="text-white/60 text-sm mb-8">
+            <p class="text-white text-sm mb-8">
                 Your Speed Crating playlist has been saved to your profile.
             </p>
 

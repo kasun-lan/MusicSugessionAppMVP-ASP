@@ -22,8 +22,10 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 HttpContext.Session.GetString("IsAuthenticated") == "true";
 
             if (isAuthenticated)
+            {
                 ViewBag.IsAuthenticated = true;
-
+                ViewBag.UserName = HttpContext.Session.GetString("UserName");
+            }
             return View();
         }
 
@@ -80,6 +82,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
             HttpContext.Session.SetString("Email", email);
             HttpContext.Session.SetString("IsAuthenticated", "true");
+            HttpContext.Session.SetString("UserName", user.Name);
 
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             {

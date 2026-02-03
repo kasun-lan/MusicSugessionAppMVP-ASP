@@ -34,10 +34,10 @@
 
             <div class="flex items-baseline gap-2 mb-1">
                 <span class="bg-white text-black font-bold text-xl px-1 uppercase tracking-tight">
-                    SPEED CRATING
+                    SPEED CRATER
                 </span>
                 <span class="text-white italic text-lg font-serif">
-                    (verb)
+                    (noun)
                 </span>
             </div>
 
@@ -62,15 +62,15 @@
                 {
                     <a asp-controller="Home"
                        asp-action="Login"
-                       class="w-full border-2 border-white/30 hover:border-white/50
+                       class="w-full border-2 border-white hover:border-white/50
                               text-white font-medium py-4 px-6 rounded transition-colors block text-center">
                         LOGIN
                     </a>
                 }
                 else
                 {
-                    <div class="text-white/70 text-sm text-center">
-                        Welcome back 👋
+                    <div class="text-white text-sm text-center">
+                        Hello @ViewBag.UserName
                     </div>
                 }
             </div>

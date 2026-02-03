@@ -16,9 +16,9 @@
             {
                 <a asp-action="Details"
                    asp-route-id="@session.Id"
-                   class="block p-4 border border-white/20 rounded hover:border-[#B4FF00] transition">
+                   class="block p-4 border border-white rounded hover:border-[#B4FF00] transition">
 
-                    <div class="text-sm text-white/70">
+                    <div class="text-sm text-white">
                         @session.StartedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")
                     </div>
 
@@ -29,7 +29,7 @@
                         }
                         else
                         {
-                            <span class="text-white/50">No artists</span>
+                            <span class="text-white">No artists</span>
                         }
                     </div>
                 </a>
@@ -37,7 +37,7 @@
 
             @if (!Model.Any())
             {
-                <div class="text-white/50 text-sm text-center">
+                <div class="text-white text-sm text-center">
                     No lists yet.
                 </div>
             }

@@ -14,13 +14,13 @@
             <h1 class="text-lg font-bold">
                 SPEED CRATING
             </h1>
-            <div class="text-sm text-white/60">
+            <div class="text-sm text-white">
                 @Model.StartedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")
             </div>
         </div>
 
         <div>
-            <h2 class="text-sm uppercase text-white/50 mb-2">Seed Artists</h2>
+            <h2 class="text-sm uppercase text-white mb-2">Seed Artists</h2>
             <div class="space-y-1">
                 @foreach (var a in Model.InputArtists.OrderBy(x => x.Position))
                 {
@@ -30,14 +30,14 @@
         </div>
 
         <div>
-            <h2 class="text-sm uppercase text-white/50 mb-2">Liked Tracks</h2>
+            <h2 class="text-sm uppercase text-white mb-2">Liked Tracks</h2>
 
             <div class="space-y-3">
                 @foreach (var swipe in Model.SwipeEvents.Where(x => x.Direction == SwipeDirection.Like))
                 {
-                    <div class="border-b border-white/10 pb-2">
+                    <div class="border-b border-white pb-2">
                         <div class="font-medium">@swipe.Track.Name</div>
-                        <div class="text-sm text-white/60">
+                        <div class="text-sm text-white">
                             @swipe.Track.Artist.Name
                         </div>
                     </div>
