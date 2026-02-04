@@ -65,6 +65,24 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             return Json(new { hasActiveSession = false });
         }
 
+        [HttpGet]
+        public IActionResult IsCrateReady()
+        {
+            var sessionKey = HttpContext.Session.Id;
+            
+            if (!_crates.TryGetValue(sessionKey, out var crate))
+                return Json(new { isReady = false });
+
+            lock (crate)
+            {
+                // Crate is ready if it's warm and has tracks available
+                var isReady = crate.LifecycleState == CrateLifecycleState.Active &&
+                              crate.IsWarm &&
+                              crate.PrimaryQueue.Count > 0;
+                return Json(new { isReady });
+            }
+        }
+
 
 
         public IActionResult Index()
@@ -103,6 +121,13 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
             var sessionKey = HttpContext.Session.Id;
 
+            // Safety check: if no active crate exists, redirect to Index
+            if (!_crates.TryGetValue(sessionKey, out var crate) || 
+                crate.LifecycleState != CrateLifecycleState.Active)
+            {
+                return RedirectToAction("Index");
+            }
+
             // ✅ If the user logged in mid-flow, attach the existing DB session to them.
             // This fixes the case where the crate was created anonymously (UserId=null)
             // and later the UI claims "saved successfully" after login.
@@ -111,13 +136,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             {
                 var userEmail = HttpContext.Session.GetString("Email");
                 if (!string.IsNullOrWhiteSpace(userEmail) &&
-                    _crates.TryGetValue(sessionKey, out var activeCrate) &&
-                    activeCrate.SessionId != Guid.Empty)
+                    crate.SessionId != Guid.Empty)
                 {
                     var user = _db.Users.FirstOrDefault(u => u.Email == userEmail);
                     if (user != null)
                     {
-                        var dbSession = _db.Sessions.FirstOrDefault(s => s.Id == activeCrate.SessionId);
+                        var dbSession = _db.Sessions.FirstOrDefault(s => s.Id == crate.SessionId);
                         if (dbSession != null && dbSession.UserId != user.Id)
                         {
                             dbSession.UserId = user.Id;
@@ -128,7 +152,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             }
 
             // Resolve selected artists (crate source) from current crate session
-            if (_crates.TryGetValue(sessionKey, out var crate) && crate.SeedArtists != null)
+            if (crate.SeedArtists != null)
             {
                 var artistNames = crate.SeedArtists
                     .OrderBy(sa => sa.Position)
@@ -142,6 +166,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 }
             }
 
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult Loading()
+        {
             return View();
         }
 
@@ -432,14 +462,14 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 FillCrateAsync(sessionKey, resolvedArtists, deezer, spotify, musicBrainzService)
             );
 
-            // Redirect to tutorial or review screen
+            // Redirect to tutorial or loading screen
             if (shouldShowTutorial)
             {
                 return RedirectToAction("Tutorial");
             }
             else
             {
-                return RedirectToAction("Review");
+                return RedirectToAction("Loading");
             }
         }
 

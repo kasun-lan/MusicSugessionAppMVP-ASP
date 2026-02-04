@@ -1,0 +1,73 @@
+@{
+    ViewData["Title"] = "Preparing your crate...";
+}
+
+<div class="relative w-full bg-black max-w-[375px] h-[812px] bg-black rounded-[3rem] flex flex-col">
+    <!-- Notch -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-black rounded-b-3xl z-20"></div>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-6 pt-16 text-white">
+        @Html.Partial("_Logo")
+
+        <!-- Loading message -->
+        <div class="text-white text-sm mb-4 text-center">
+            Preparing your crate...
+        </div>
+
+        <!-- Spinner -->
+        <div class="w-8 h-8 border-4 border-[#B4FF00] border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div class="mt-auto pb-6">
+        @await Html.PartialAsync("_BottomNav")
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let pollInterval = null;
+        let isPolling = false;
+
+        async function checkCrateReady() {
+            try {
+                // Check if crate is ready (active, warm, and has tracks)
+                const response = await fetch('/Sources/IsCrateReady');
+                if (!response.ok) {
+                    return false;
+                }
+
+                const data = await response.json();
+                return data.isReady === true;
+            } catch (error) {
+                console.error('Error checking crate readiness:', error);
+                return false;
+            }
+        }
+
+        function startPolling() {
+            if (isPolling) return;
+
+            isPolling = true;
+            pollInterval = setInterval(async () => {
+                const isReady = await checkCrateReady();
+                if (isReady) {
+                    stopPolling();
+                    // Redirect to Review page
+                    window.location.href = '/Sources/Review';
+                }
+            }, 1000); // Poll every second
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+            isPolling = false;
+        }
+
+        // Start polling when page loads
+        startPolling();
+    </script>
+}

@@ -51,8 +51,8 @@
             </p>
         </div>
 
-        <!-- Loading state -->
-        <div id="loading-state" class="flex-1 flex flex-col items-center justify-center mb-6">
+        <!-- Loading state (fallback only - shown when queue temporarily empties mid-session) -->
+        <div id="loading-state" class="flex-1 flex flex-col items-center justify-center mb-6 hidden">
             <div class="text-white text-sm mb-4 text-center">
                 Please wait, tracks are being prepared...
             </div>
@@ -867,8 +867,40 @@
             if (e.key === 'ArrowLeft') showHeart('dislike');
         });
 
-        // Start polling for tracks when page loads
-        startPolling();
+        // Try to load first track immediately (crate should already be warm)
+        (async () => {
+            // Safety check: verify active crate session exists
+            try {
+                const sessionResponse = await fetch('/Sources/HasActiveCrateSession');
+                if (sessionResponse.ok) {
+                    const sessionData = await sessionResponse.json();
+                    if (!sessionData.hasActiveSession) {
+                        // No active crate session, redirect to Index
+                        window.location.href = '/Sources/Index';
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking active session:', error);
+                window.location.href = '/Sources/Index';
+                return;
+            }
+
+            // Try to load first track
+            const firstTrack = await loadNextTrack();
+            if (firstTrack) {
+                // Crate is ready, show track
+                loadingState.classList.add('hidden');
+                trackContent.classList.remove('hidden');
+                endSessionBtn.classList.remove('hidden');
+                renderTrack(firstTrack);
+            } else {
+                // Crate not ready yet, show loading and start polling as fallback
+                loadingState.classList.remove('hidden');
+                trackContent.classList.add('hidden');
+                startPolling();
+            }
+        })();
 
         const exportOptions = document.getElementById('export-options');
         const emailForm = document.getElementById('email-form');
