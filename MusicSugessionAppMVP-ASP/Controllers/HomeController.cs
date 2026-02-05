@@ -41,9 +41,14 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             var isAuthenticated =
                 HttpContext.Session.GetString("IsAuthenticated") == "true";
 
+            var email = isAuthenticated
+                ? HttpContext.Session.GetString("Email")
+                : null;
+
             return Json(new
             {
-                isAuthenticated
+                isAuthenticated,
+                email
             });
         }
 

@@ -132,6 +132,11 @@
                         Send to my SoundCloud profile
                     </button>
                 </div>
+
+                <!-- Skip Export-->
+                <button id="skip-export" class="text-white/60 hover:text-white text-sm mt-8 py-2 transition-colors">
+                    Skip
+                </button>
             </div>
 
             <!-- MODE 2: Email Form -->
@@ -251,12 +256,7 @@
                     Continue speed crating
                 </button>
             </div>
-
-
-            <!-- Skip Export-->
-            <button id="skip-export" class="text-white/60 hover:text-white text-sm mt-8 py-2 transition-colors">
-                Skip
-            </button>
+           
         </div>
 
 
@@ -287,9 +287,10 @@
             </div>
         </div>
 
+       
 
         @await Html.PartialAsync("_BottomNav")
-
+       
     </div>
 
     <!-- END SESSION OVERLAY -->
@@ -563,6 +564,20 @@
                             exportOverlay.classList.add('flex');
                             emailForm.classList.remove('hidden');
                             exportOptions.classList.add('hidden');
+                            
+                            // Populate email if user is logged in
+                            (async () => {
+                                const authData = await getAuthStatus();
+                                if (authData.isAuthenticated && authData.email) {
+                                    emailInput.value = authData.email;
+                                    // Trigger input event to enable send button
+                                    emailInput.dispatchEvent(new Event('input'));
+                                } else {
+                                    emailInput.value = '';
+                                    sendEmailBtn.disabled = true;
+                                    sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
+                                }
+                            })();
                             break;
 
                         case 'email-sent':
@@ -573,9 +588,9 @@
                             endSessionEmail.classList.remove('hidden');
                             endSessionEmail.classList.add('flex');
 
-                            const isAuthenticated = await getAuthStatus();
+                            const authData = await getAuthStatus();
 
-                            if (isAuthenticated) {
+                            if (authData.isAuthenticated) {
                                 document.getElementById('email-logged-in')
                                     .classList.remove('hidden');
                                 document.getElementById('email-logged-out')
@@ -611,12 +626,15 @@
         async function getAuthStatus() {
             try {
                 const response = await fetch('/Home/AuthStatus');
-                if (!response.ok) return false;
+                if (!response.ok) return { isAuthenticated: false, email: null };
 
                 const data = await response.json();
-                return data.isAuthenticated === true;
+                return {
+                    isAuthenticated: data.isAuthenticated === true,
+                    email: data.email || null
+                };
             } catch {
-                return false;
+                return { isAuthenticated: false, email: null };
             }
         }
 
@@ -752,50 +770,13 @@
 
                 swipeCount++;
 
-                // After 2 swipes, show export overlay
+                // After 5 swipes, show export overlay
                 if (swipeCount === 5) {
                     exportContext = 'mid-session';
-
-                    try {
-                        const response = await fetch('/Sources/CanSkipExportOverlay');
-                        if (!response.ok) {
-                            // Fail safe: show overlay if server check fails
-                            exportOverlay.classList.remove('hidden');
-                            exportOverlay.classList.add('flex');
-                            stopPolling();
-                            return;
-                        }
-
-                        const result = await response.json();
-
-                        if (result.canSkip === true) {
-                            // ✔ Email already known → continue silently
-                            const nextTrack = await loadNextTrack();
-                            if (nextTrack) {
-                                renderTrack(nextTrack);
-                            } else {
-                                loadingState.classList.remove('hidden');
-                                trackContent.classList.add('hidden');
-                                startPolling();
-                            }
-                            return;
-                        }
-
-                        // ❌ Email missing → show overlay
-                        exportOverlay.classList.remove('hidden');
-                        exportOverlay.classList.add('flex');
-                        stopPolling();
-                        return;
-
-                    } catch (err) {
-                        console.error('Export eligibility check failed:', err);
-
-                        // Fail safe: show overlay
-                        exportOverlay.classList.remove('hidden');
-                        exportOverlay.classList.add('flex');
-                        stopPolling();
-                        return;
-                    }
+                    exportOverlay.classList.remove('hidden');
+                    exportOverlay.classList.add('flex');
+                    stopPolling();
+                    return;
                 }
 
 
@@ -934,9 +915,21 @@
 
 
         // Switch to email mode
-        emailOptionBtn.addEventListener('click', () => {
+        emailOptionBtn.addEventListener('click', async () => {
             exportOptions.classList.add('hidden');
             emailForm.classList.remove('hidden');
+            
+            // Populate email if user is logged in
+            const authData = await getAuthStatus();
+            if (authData.isAuthenticated && authData.email) {
+                emailInput.value = authData.email;
+                // Trigger input event to enable send button
+                emailInput.dispatchEvent(new Event('input'));
+            } else {
+                emailInput.value = '';
+                sendEmailBtn.disabled = true;
+                sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
+            }
         });
 
         // Back to options
@@ -1012,9 +1005,9 @@
                         endSessionEmail.classList.remove('hidden');
                         endSessionEmail.classList.add('flex');
 
-                        const isAuthenticated = await getAuthStatus();
+                        const authData = await getAuthStatus();
 
-                        if (isAuthenticated) {
+                        if (authData.isAuthenticated) {
                             document.getElementById('email-logged-in')
                                 .classList.remove('hidden');
                             document.getElementById('email-logged-out')
