@@ -43,6 +43,26 @@ namespace MusicSugessionAppMVP_ASP
 
             builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
+            builder.Services.AddHttpClient<ISoundCloudApiService, SoundCloudApiService>(client =>
+            {
+                // optional defaults
+            });
+
+            builder.Services.AddScoped<ISoundCloudApiService>(sp =>
+            {
+                var http = sp.GetRequiredService<IHttpClientFactory>()
+                             .CreateClient();
+
+                var config = sp.GetRequiredService<IConfiguration>();
+
+                return new SoundCloudApiService(
+                    http,
+                    config["SoundCloud:ClientId"],
+                    config["SoundCloud:ClientSecret"]);
+            });
+
+
+
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
