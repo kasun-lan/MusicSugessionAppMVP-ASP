@@ -1,0 +1,56 @@
+﻿@{
+    Layout = null;
+}
+
+<h2>Apple Music Playlist Test</h2>
+
+<button onclick="initMusicKit()">1) Initialize MusicKit</button>
+<button onclick="signIn()">2) Sign in to Apple Music</button>
+<button onclick="createPlaylist()">3) Create Playlist</button>
+
+<p id="status"></p>
+
+<script src="https://js-cdn.music.apple.com/musickit/v1/musickit.js"></script>
+
+<script>
+    async function initMusicKit() {
+        const res = await fetch("/apple-music-test/developer-token");
+        const data = await res.json();
+
+        await MusicKit.configure({
+            developerToken: data.developerToken,
+            app: {
+                name: "ASP.NET Music Test",
+                build: "1.0.0"
+            }
+        });
+
+        document.getElementById("status").innerText = "MusicKit configured";
+    }
+
+    async function signIn() {
+        const music = MusicKit.getInstance();
+        const userToken = await music.authorize();
+
+        await fetch("/apple-music-test/store-user-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: userToken })
+        });
+
+        document.getElementById("status").innerText = "User authorized";
+    }
+
+    async function createPlaylist() {
+        const name = prompt("Playlist name?", "Test Playlist");
+
+        const res = await fetch("/apple-music-test/create-playlist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name })
+        });
+
+        const text = await res.text();
+        document.getElementById("status").innerText = text;
+    }
+</script>

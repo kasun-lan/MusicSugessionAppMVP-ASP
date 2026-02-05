@@ -1,4 +1,4 @@
-﻿using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 
@@ -10,6 +10,10 @@ namespace MusicSugessionAppMVP_ASP.Services
         private readonly string _keyId;
         private readonly string _privateKeyPath;
 
+        private readonly object _lock = new();
+        private string? _cachedToken;
+        private DateTime _cachedTokenExpiryUtc;
+
         public AppleMusicTokenService(string teamId, string keyId, string privateKeyPath)
         {
             _teamId = teamId;
@@ -19,6 +23,16 @@ namespace MusicSugessionAppMVP_ASP.Services
 
         public string GenerateDeveloperToken()
         {
+            lock (_lock)
+            {
+                // Reuse token until close to expiry to avoid re-reading the key file on every request.
+                if (!string.IsNullOrWhiteSpace(_cachedToken) &&
+                    DateTime.UtcNow < _cachedTokenExpiryUtc)
+                {
+                    return _cachedToken;
+                }
+            }
+
             // Read the .p8 private key
             var privateKeyText = File.ReadAllText(_privateKeyPath);
 
@@ -34,6 +48,7 @@ namespace MusicSugessionAppMVP_ASP.Services
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
 
             var now = DateTime.UtcNow;
+            var expires = now.AddMinutes(20); // Apple recommends short-lived tokens
 
             var tokenHandler = new JwtSecurityTokenHandler();
 
@@ -42,11 +57,20 @@ namespace MusicSugessionAppMVP_ASP.Services
                 audience: "https://appleid.apple.com",
                 claims: null,
                 notBefore: now,
-                expires: now.AddMinutes(20),  // Apple recommends short-lived tokens
+                expires: expires,
                 signingCredentials: credentials
             );
 
-            return tokenHandler.WriteToken(token);
+            var jwt = tokenHandler.WriteToken(token);
+
+            lock (_lock)
+            {
+                _cachedToken = jwt;
+                // Refresh 60s early.
+                _cachedTokenExpiryUtc = expires.AddSeconds(-60);
+            }
+
+            return jwt;
         }
     }
 }

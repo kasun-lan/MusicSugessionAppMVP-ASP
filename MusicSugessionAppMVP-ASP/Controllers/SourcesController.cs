@@ -13,6 +13,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
     {
         private readonly Persistence _db;
         private readonly IEmailService _emailService;
+        private readonly AppleMusicService _appleMusic;
 
         // NOTE: Session Terminology
         // - "User Login Session" = ASP.NET HttpContext.Session (managed by ASP.NET, tied to browser cookie)
@@ -24,10 +25,11 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         private const int PrimaryRefillThreshold = 10;
         private const int PrimaryRefillBatchSize = 5;
 
-        public SourcesController(Persistence db, IEmailService emailService)
+        public SourcesController(Persistence db, IEmailService emailService, AppleMusicService appleMusic)
         {
             _db = db;
             _emailService = emailService;
+            _appleMusic = appleMusic;
         }
 
         [HttpGet]
@@ -368,18 +370,11 @@ namespace MusicSugessionAppMVP_ASP.Controllers
             //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
             //    return RedirectToAction("Login", "Home");
 
-            var clientId = "dbb1ff804d89446f8c744d200b20e2d8";
-            var clientSecret = "57681c65030c4ea49e563f2ca643d1b4";
-
-            var spotify = new SpotifyService(clientId, clientSecret);
-            var musicBrainzService = new MusicBrainzService();
-            var deezer = new DeezerService();
-
             var resolvedArtists = new List<ArtistInfo>();
 
             foreach (var name in new[] { input.Artist1, input.Artist2, input.Artist3 })
             {
-                var artist = await ResolveArtistAsync(spotify, musicBrainzService, name);
+                var artist = await ResolveArtistAsync(_appleMusic, name);
                 if (artist == null)
                 {
                     ModelState.AddModelError("", $"Artist not found: {name}");
@@ -459,7 +454,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
             // 🔥 Fire-and-forget background fill (IMPORTANT)
             _ = Task.Run(() =>
-                FillCrateAsync(sessionKey, resolvedArtists, deezer, spotify, musicBrainzService)
+                FillCrateAsync(sessionKey, resolvedArtists)
             );
 
             // Redirect to tutorial or loading screen
@@ -684,13 +679,10 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
         private async Task FillCrateAsync(
     string sessionId,
-    List<ArtistInfo> seedArtists,
-    DeezerService deezer,
-    SpotifyService spotify,
-    MusicBrainzService musicBrainz)
+    List<ArtistInfo> seedArtists)
         {
             var crate = _crates[sessionId];
-            var aggregator = new SimilarArtistAggregationService(deezer);
+            var aggregator = new SimilarArtistAggregationService(_appleMusic);
 
             foreach (var seed in seedArtists)
             {
@@ -703,10 +695,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                     if (!crate.SeenArtists.Add(candidate.Name))
                         continue;
 
-                    await EnrichArtist(candidate, spotify);
-
-                    if (!await ArtistValdation(crate.SelectedGenres, candidate, seedArtists, spotify,
-                        deezer, musicBrainz))
+                    if (!await ArtistValdation(crate.SelectedGenres, candidate, seedArtists))
                         continue;
 
                     var shuffled = candidate.Tracks
@@ -733,17 +722,13 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         }
 
         private async Task<bool> ArtistValdation(HashSet<string> selectedGenres,
-            ArtistInfo similarArtist, List<ArtistInfo> selectedArtists,
-            SpotifyService spotifyService,
-            DeezerService deezerService,
-            MusicBrainzService musicBrainzService)
+            ArtistInfo similarArtist, List<ArtistInfo> selectedArtists)
         {
             if (selectedArtists.Any(a =>
                 string.Equals(a.Name, similarArtist.Name, StringComparison.OrdinalIgnoreCase)))
                 return false;
 
-            bool hasGenres = await PopulateGenresFromAllSourcesAsync(similarArtist, spotifyService,
-                 deezerService, musicBrainzService);
+            bool hasGenres = await PopulateGenresFromAppleMusicAsync(similarArtist);
             if (!hasGenres)
                 return false;
 
@@ -767,14 +752,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         {
             if (!_crates.TryGetValue(sessionId, out var crate))
                 return;
-
-            var deezer = new DeezerService();
-            var spotify = new SpotifyService(
-                "dbb1ff804d89446f8c744d200b20e2d8",
-                "57681c65030c4ea49e563f2ca643d1b4");
-
-            var musicBrainz = new MusicBrainzService();
-            var aggregator = new SimilarArtistAggregationService(deezer);
+            var aggregator = new SimilarArtistAggregationService(_appleMusic);
 
             try
             {
@@ -788,15 +766,10 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                     if (!crate.SeenArtists.Add(candidate.Name))
                         continue;
 
-                    await EnrichArtist(candidate, spotify);
-
                     if (!await ArtistValdation(
                             crate.SelectedGenres,
                             candidate,
-                            new List<ArtistInfo>(), // seed artists already filtered earlier
-                            spotify,
-                            deezer,
-                            musicBrainz))
+                            new List<ArtistInfo>())) // seed artists already filtered earlier
                         continue;
 
                     var shuffled = candidate.Tracks
@@ -869,120 +842,69 @@ namespace MusicSugessionAppMVP_ASP.Controllers
 
 
 
-        private async Task<ArtistInfo?> ResolveArtistAsync(
-    SpotifyService spotify, MusicBrainzService musicBrainzService,
-    string inputName)
+        private async Task<ArtistInfo?> ResolveArtistAsync(AppleMusicService appleMusicService, string inputName)
         {
-            var results = await spotify.SearchArtistsAsync(inputName);
+            if (string.IsNullOrWhiteSpace(inputName))
+                return null;
 
+            var results = await appleMusicService.SearchArtistsAsync(inputName).ConfigureAwait(false);
             if (results.Count == 0)
                 return null;
 
             var exact =
                 results.FirstOrDefault(a =>
-                    string.Equals(a.Name, inputName,
-                        StringComparison.OrdinalIgnoreCase));
+                    string.Equals(a.Name, inputName, StringComparison.OrdinalIgnoreCase));
 
             var selected = exact ?? results
                 .OrderByDescending(a => SimilarityScore(inputName, a.Name))
                 .First();
 
-            var fullArtists = await GetFullSpotifyArtists(new List<ArtistInfo>() { selected }, spotify);
-            var artistsWithGenres = await AddMusicBrainzGenretoArtists(fullArtists, musicBrainzService);
+            if (!TryGetAppleMusicId(selected, out var appleId))
+                return selected;
 
-            return artistsWithGenres.FirstOrDefault();
+            // Fetch full artist object (genreNames, url, etc.)
+            var full = await appleMusicService.GetArtistByIdAsync(appleId).ConfigureAwait(false);
+            return full ?? selected;
         }
 
-        private async Task<bool> PopulateGenresFromAllSourcesAsync(ArtistInfo artist, SpotifyService spotifyService
-           , DeezerService deezerService, MusicBrainzService musicBrainzService)
+        private async Task<bool> PopulateGenresFromAppleMusicAsync(ArtistInfo artist)
         {
-            var genreSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (artist.Metadata.TryGetValue("genres", out var existing) && !string.IsNullOrWhiteSpace(existing))
+                return true;
 
-            // --- Spotify ---
-            if (spotifyService != null && !string.IsNullOrWhiteSpace(artist.SpotifyId))
+            if (!TryGetAppleMusicId(artist, out var appleId))
+                return false;
+
+            try
             {
-                try
-                {
-                    var spotifyArtist = await spotifyService.GetArtistByIdAsync(artist.SpotifyId);
-                    if (spotifyArtist?.Metadata.TryGetValue("genres", out var sg) == true &&
-                        !string.IsNullOrWhiteSpace(sg))
-                    {
-                        foreach (var g in sg.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                            genreSet.Add(g.Trim());
-                    }
-                }
-                catch
-                {
-                    // swallow intentionally (same as original behavior)
-                }
+                var full = await _appleMusic.GetArtistByIdAsync(appleId).ConfigureAwait(false);
+                if (full == null)
+                    return false;
+
+                // Copy a few enriched fields
+                artist.ImageUrl ??= full.ImageUrl;
+                if (full.Metadata.TryGetValue("genres", out var genres) && !string.IsNullOrWhiteSpace(genres))
+                    artist.Metadata["genres"] = genres;
+
+                return artist.Metadata.TryGetValue("genres", out var g) && !string.IsNullOrWhiteSpace(g);
             }
-
-            // --- MusicBrainz ---
-            if (musicBrainzService != null)
+            catch
             {
-                var mbGenres = await musicBrainzService.GetGenresAsync(artist.Name);
-
-                foreach (var g in mbGenres)
-                    if (!string.IsNullOrWhiteSpace(g))
-                        genreSet.Add(g.Trim());
+                // preserve original pipeline behavior (soft-fail)
+                return false;
             }
+        }
 
-            if (genreSet.Count > 0)
+        private static bool TryGetAppleMusicId(ArtistInfo artist, out string appleMusicId)
+        {
+            if (artist.Metadata.TryGetValue("apple_music_id", out var id) && !string.IsNullOrWhiteSpace(id))
             {
-                artist.Metadata["genres"] = string.Join(", ", genreSet);
+                appleMusicId = id!;
                 return true;
             }
 
+            appleMusicId = string.Empty;
             return false;
-        }
-
-        private async Task EnrichArtist(ArtistInfo artist, SpotifyService spotifyService)
-        {
-            if (artist.SpotifyId == null && spotifyService != null)
-            {
-                var match = await spotifyService.GetArtistByNameAsync(artist.Name);
-                if (match != null)
-                {
-                    artist.SpotifyId = match.SpotifyId;
-                    artist.ImageUrl ??= match.ImageUrl;
-                }
-            }
-        }
-
-        private async Task<IEnumerable<ArtistInfo>> GetFullSpotifyArtists(IEnumerable<ArtistInfo> artists, SpotifyService spotifyService)
-        {
-            var list = new List<ArtistInfo>();
-
-            foreach (var artist in artists)
-            {
-                if (spotifyService != null && !string.IsNullOrWhiteSpace(artist.SpotifyId))
-                {
-                    var full = await spotifyService.GetArtistByIdAsync(artist.SpotifyId);
-                    if (full != null)
-                        list.Add(full);
-                }
-            }
-
-            return list;
-        }
-
-        private async Task<IEnumerable<ArtistInfo>> AddMusicBrainzGenretoArtists(IEnumerable<ArtistInfo> artists, MusicBrainzService musicBrainzService)
-        {
-            foreach (var artist in artists)
-            {
-                bool hasGenres =
-                    artist.Metadata.TryGetValue("genres", out var g) &&
-                    !string.IsNullOrWhiteSpace(g);
-
-                if (!hasGenres && musicBrainzService != null)
-                {
-                    var mbGenres = await musicBrainzService.GetGenresAsync(artist.Name);
-                    if (mbGenres.Count > 0)
-                        artist.Metadata["genres"] = string.Join(", ", mbGenres);
-                }
-            }
-
-            return artists;
         }
 
         private static int SimilarityScore(string a, string b)

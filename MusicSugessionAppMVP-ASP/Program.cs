@@ -18,6 +18,23 @@ namespace MusicSugessionAppMVP_ASP
                 builder.Configuration.GetConnectionString("DefaultConnection")
             );
 
+            // Apple Music (Developer Token)
+            // Prefer configuration (appsettings / env vars), fallback to current hardcoded values.
+            var appleTeamId = builder.Configuration["AppleMusic:TeamId"] ?? "429QUQ6VGA";
+            var appleKeyId = builder.Configuration["AppleMusic:KeyId"] ?? "5A6HD2Z35H";
+            var applePrivateKeyPath = builder.Configuration["AppleMusic:PrivateKeyPath"] ?? "Keys/AuthKey_5A6HD2Z35H.p8";
+            if (!Path.IsPathRooted(applePrivateKeyPath))
+                applePrivateKeyPath = Path.Combine(builder.Environment.ContentRootPath, applePrivateKeyPath);
+
+            builder.Services.AddSingleton(new AppleMusicTokenService(
+                teamId: appleTeamId,
+                keyId: appleKeyId,
+                privateKeyPath: applePrivateKeyPath
+            ));
+
+            builder.Services.AddHttpClient<AppleMusicService>();
+
+
             builder.Services.Configure<EmailSettings>(
             builder.Configuration.GetSection("Email"));
 

@@ -1,14 +1,14 @@
-﻿using MusicSugessionAppMVP_ASP.Models;
+using MusicSugessionAppMVP_ASP.Models;
 
 namespace MusicSugessionAppMVP_ASP.Services
 {
     public class SimilarArtistAggregationService
     {
-        private readonly DeezerService _deezerService;
+        private readonly AppleMusicService _appleMusicService;
 
-        public SimilarArtistAggregationService(DeezerService deezerService)
+        public SimilarArtistAggregationService(AppleMusicService appleMusicService)
         {
-            _deezerService = deezerService;
+            _appleMusicService = appleMusicService;
         }
 
         public async Task<List<ArtistInfo>> GetSimilarArtistsWithAtLeastOneTrackAsync(
@@ -16,36 +16,10 @@ namespace MusicSugessionAppMVP_ASP.Services
             int maxArtists,
             CancellationToken cancellationToken = default)
         {
-            var result = new List<ArtistInfo>();
-
-            // 1. Get similar artists from Deezer
-            var similarArtists =
-                await _deezerService.GetSimilarArtistsByNameAsync(artistName, cancellationToken);
-
-            foreach (var artist in similarArtists)
-            {
-                if (result.Count >= maxArtists)
-                    break;
-
-                if (string.IsNullOrWhiteSpace(artist.DeezerId))
-                    continue;
-
-                // 2. Fetch tracks for this artist
-                var tracks = await _deezerService
-                    .GetDeezerArtistTracksAsync(artist.DeezerId, limit: 3, cancellationToken);
-
-                // 3. Keep only artists with at least ONE track
-                if (tracks.Count >= 1)
-                {
-                    artist.Tracks.AddRange(tracks);
-                    artist.TopTrackCount = tracks.Count;
-                    artist.Metadata["track_count"] = tracks.Count.ToString();
-
-                    result.Add(artist);
-                }
-            }
-
-            return result;
+            return await _appleMusicService.GetSimilarArtistsWithAtLeastOneTrackAsync(
+                artistName,
+                maxArtists,
+                cancellationToken).ConfigureAwait(false);
         }
     }
 }
