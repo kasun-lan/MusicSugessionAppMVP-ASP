@@ -43,7 +43,7 @@
             </button>
         </div>
 
-        
+
 
         <!-- Loading state (fallback only - shown when queue temporarily empties mid-session) -->
         <div id="loading-state" class="flex-1 flex flex-col items-center justify-center mb-6 hidden">
@@ -135,9 +135,7 @@
 
             <!-- MODE 2: Email Form -->
             <div id="email-form" class="hidden">
-                <h3 class="text-white font-bold text-base mb-4 uppercase">
-                    Send playlist to your email
-                </h3>
+               
 
                 <input id="email-input" type="email" placeholder="Enter your email" class="w-full bg-transparent border-2 border-white
                        focus:border-[#B4FF00] text-white
@@ -149,8 +147,15 @@
                     Register email
                 </button>
 
-                <button id="back-to-options" class="w-full border-2 border-white hover:border-white/50
-                           text-white text-sm py-3 px-4 rounded transition-colors">
+                <p class="text-white text-xs text-left">
+                    By entering your email address you agree to our
+                    <button id="open-terms" class="underline text-white hover:text-white">
+                        terms &amp; conditions
+                    </button>
+
+                </p>
+
+                <button id="back-to-options" class="text-center text-white hover:text-white text-sm mt-8 py-2 transition-colors">
                     Back
                 </button>
             </div>
@@ -291,26 +296,24 @@
     <div id="end-session-overlay"
          class="absolute inset-0 z-50 hidden bg-black/90 flex flex-col justify-between p-8 pt-20 pb-8">
 
-        @Html.Partial("_Logo")
+        <div>
+            @Html.Partial("_Logo")
+
+            <h3 class="text-white font-bold text-base mb-4 uppercase">
+                END SPEED CRATING SESSION?
+            </h3>
+        </div>
 
         <div>
-            <h3 class="text-white font-bold text-base mb-4 uppercase">
-                End speed crating session?
-            </h3>
 
-            <p class="text-white text-sm mb-8">
-                All fun must come to an end so does this.
-                Please confirm below that you want to end the session and that we send your list of liked
-                tracks.
-            </p>
 
             <button id="confirm-end-session" class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
                        text-black font-bold py-3 px-4 rounded transition-colors mb-4">
-                End this session and send list
+                End this session
             </button>
 
-            <button id="continue-session" class="w-full border-2 border-white hover:border-white/50
-                       text-white py-3 px-4 rounded transition-colors">
+            <button id="continue-session" class="text-[#B4FF00] w-full hover:border-white/50
+                        py-3 px-4 rounded transition-colors">
                 Continue session
             </button>
         </div>
@@ -564,10 +567,12 @@
                                 const authData = await getAuthStatus();
                                 if (authData.isAuthenticated && authData.email) {
                                     emailInput.value = authData.email;
+                                    sendEmailBtn.textContent = 'Use this email';
                                     // Trigger input event to enable send button
                                     emailInput.dispatchEvent(new Event('input'));
                                 } else {
                                     emailInput.value = '';
+                                    sendEmailBtn.textContent = 'Register email';
                                     sendEmailBtn.disabled = true;
                                     sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
                                 }
@@ -575,6 +580,7 @@
                             break;
 
                         case 'email-sent':
+                            console.log("email sent")
                             // 🔴 CRITICAL: close export overlay first
                             exportOverlay.classList.add('hidden');
                             exportOverlay.classList.remove('flex');
@@ -917,10 +923,12 @@
             const authData = await getAuthStatus();
             if (authData.isAuthenticated && authData.email) {
                 emailInput.value = authData.email;
+                sendEmailBtn.textContent = 'Use this email';
                 // Trigger input event to enable send button
                 emailInput.dispatchEvent(new Event('input'));
             } else {
                 emailInput.value = '';
+                sendEmailBtn.textContent = 'Register email';
                 sendEmailBtn.disabled = true;
                 sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
             }
@@ -970,10 +978,8 @@
                 // 2. Branch by context
                 if (exportContext === 'mid-session') {
                     // ✔ DO NOT end session
-                    // ✔ Show "email registered" + continue crating
-                    exportOptions.classList.add('hidden');
-                    emailForm.classList.add('hidden');
-                    successOverlay.classList.remove('hidden');
+                    // ✔ Return to speed creating
+                    closeOverlay();
                     return;
                 }
 
@@ -1045,6 +1051,7 @@
             spotifySuccess.classList.add('hidden');
 
             emailInput.value = '';
+            sendEmailBtn.textContent = 'Register email';
             sendEmailBtn.disabled = true;
             sendEmailBtn.classList.add('opacity-30', 'cursor-not-allowed');
 
