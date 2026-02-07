@@ -79,6 +79,32 @@ namespace MusicSugessionAppMVP_ASP
 
             var app = builder.Build();
 
+            // ============================================
+            // TEMPORARY TEST CODE - Remove after testing
+            // ============================================
+            if (app.Environment.IsDevelopment())
+            {
+                using (var scope = app.Services.CreateScope())
+                {
+                    var soundCloudService = scope.ServiceProvider.GetRequiredService<ISoundCloudApiService>();
+                    
+                    // Test SearchTrackIdAsync
+                    Console.WriteLine("Testing SearchTrackIdAsync...");
+                    var testTrackName = "Linking Park - What I've Done"; // Change this to test different tracks
+                    var trackId = soundCloudService.SearchTrackIdAsync(testTrackName).GetAwaiter().GetResult();
+                    
+                    if (trackId.HasValue)
+                    {
+                        Console.WriteLine($"✓ Found track ID: {trackId.Value} for '{testTrackName}'");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"✗ No track found for '{testTrackName}'");
+                    }
+                }
+            }
+            // ============================================
+
             app.UseSession();
 
 

@@ -1,10 +1,12 @@
-﻿using System.Net.Http.Headers;
+﻿using System;
+using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace MusicSugessionAppMVP_ASP.Services
 {
     public class SoundCloudApiService : ISoundCloudApiService
     {
+
 
         private readonly HttpClient _httpClient;
         private readonly string _clientId;
@@ -100,6 +102,71 @@ namespace MusicSugessionAppMVP_ASP.Services
             response.EnsureSuccessStatusCode();
 
             return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<long?> SearchTrackIdAsync(
+            string trackName)
+        {
+            if (string.IsNullOrWhiteSpace(trackName))
+                return null;
+
+            // SoundCloud search API endpoint
+            // Note: SoundCloud's public search API uses client_id, not OAuth
+            var url = $"https://api.soundcloud.com/tracks" +
+                      $"?client_id={_clientId}" +
+                      $"&q={Uri.EscapeDataString(trackName)}" +
+                      $"&limit=5";
+
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+                
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                var jsonString = await response.Content.ReadAsStringAsync();
+                using var json = JsonDocument.Parse(jsonString);
+                
+                // SoundCloud returns an array of tracks
+                if (json.RootElement.ValueKind != JsonValueKind.Array || json.RootElement.GetArrayLength() == 0)
+                    return null;
+
+                // Try to find the best match by comparing track name
+                var normalizedTrackName = trackName.ToLowerInvariant();
+                
+                foreach (var track in json.RootElement.EnumerateArray())
+                {
+                    if (!track.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number)
+                        continue;
+
+                    var trackId = idEl.GetInt64();
+                    
+                    // Get track title for matching
+                    var title = track.TryGetProperty("title", out var titleEl) 
+                        ? titleEl.GetString()?.ToLowerInvariant() ?? "" 
+                        : "";
+
+                    // Simple matching: check if track name matches
+                    if (title.Contains(normalizedTrackName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return trackId;
+                    }
+                }
+
+                // If no exact match, return the first result (best effort)
+                var firstTrack = json.RootElement[0];
+                if (firstTrack.TryGetProperty("id", out var firstIdEl) && firstIdEl.ValueKind == JsonValueKind.Number)
+                {
+                    return firstIdEl.GetInt64();
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                // Log error if needed
+                return null;
+            }
         }
     }
 }

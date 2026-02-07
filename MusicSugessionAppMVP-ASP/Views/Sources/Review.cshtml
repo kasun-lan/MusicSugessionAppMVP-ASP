@@ -106,22 +106,14 @@
                         Send list to my email
                     </button>
 
-                    <button id="spotify-option" class="w-full border-2 border-white hover:border-white/50
-               text-white text-sm py-3 px-4 rounded transition-colors">
-                        Send to my Spotify profile
-                    </button>
+                 
 
                     <button class="export-close w-full border-2 border-white hover:border-white/50
                                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send to my Apple Music profile
                     </button>
 
-                    <button class="export-close w-full border-2 border-white hover:border-white/50
-                               text-white text-sm py-3 px-4 rounded transition-colors">
-                        Send to my Deezer profile
-                    </button>
-
-                    <button class="export-close w-full border-2 border-white hover:border-white/50
+                    <button id="soundcloud-option" class="w-full border-2 border-white hover:border-white/50
                                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send to my SoundCloud profile
                     </button>
@@ -646,6 +638,18 @@
                             endSessionStreaming.classList.add('flex');
                             break;
 
+                        case 'soundcloud-not-connected':
+                            // User selected SoundCloud but hasn't connected yet
+                            exportContext = 'end-session';
+                            openSoundCloudAuth('end-session');
+                            break;
+
+                        case 'soundcloud-sent':
+                            // Playlist created successfully
+                            endSessionStreaming.classList.remove('hidden');
+                            endSessionStreaming.classList.add('flex');
+                            break;
+
                         default:
                             alert('Unsupported export method.');
                             break;
@@ -932,21 +936,27 @@
         const continueFromSpotifyBtn = document.getElementById('continue-from-spotify');
 
         // Open Spotify connect screen
-        spotifyOption.addEventListener('click', () => {
-            exportOptions.classList.add('hidden');
-            spotifyConnect.classList.remove('hidden');
-        });
+        if (spotifyOption) {
+            spotifyOption.addEventListener('click', () => {
+                exportOptions.classList.add('hidden');
+                spotifyConnect.classList.remove('hidden');
+            });
+        }
 
         // Simulate Spotify connection
-        connectSpotifyBtn.addEventListener('click', () => {
-            spotifyConnect.classList.add('hidden');
-            spotifySuccess.classList.remove('hidden');
-        });
+        if (connectSpotifyBtn) {
+            connectSpotifyBtn.addEventListener('click', () => {
+                spotifyConnect.classList.add('hidden');
+                spotifySuccess.classList.remove('hidden');
+            });
+        }
 
         // Continue speed crating
-        continueFromSpotifyBtn.addEventListener('click', () => {
-            closeOverlay();
-        });
+        if (continueFromSpotifyBtn) {
+            continueFromSpotifyBtn.addEventListener('click', () => {
+                closeOverlay();
+            });
+        }
 
 
         // Switch to email mode
@@ -974,6 +984,96 @@
             emailForm.classList.add('hidden');
             exportOptions.classList.remove('hidden');
         });
+
+        // SoundCloud option handler
+        const soundcloudOptionBtn = document.getElementById('soundcloud-option');
+        if (soundcloudOptionBtn) {
+            soundcloudOptionBtn.addEventListener('click', () => {
+                // Determine context (mid-session or end-session)
+                const context = exportContext; // 'mid-session' or 'end-session'
+                
+                // Open SoundCloud OAuth in popup window
+                openSoundCloudAuth(context);
+            });
+        }
+
+        // Function to open SoundCloud auth in popup window
+        function openSoundCloudAuth(context) {
+            const width = 600;
+            const height = 700;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2;
+            
+            const popup = window.open(
+                `/Sources/SoundCloudAuth?context=${context}`,
+                'SoundCloudAuth',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+            );
+
+            // Listen for messages from the popup
+            const messageListener = (event) => {
+                // Verify origin for security
+                if (event.origin !== window.location.origin) {
+                    return;
+                }
+
+                if (event.data.type === 'soundcloud-auth-success') {
+                    // Remove listener
+                    window.removeEventListener('message', messageListener);
+                    
+                    // Close popup if still open
+                    if (popup && !popup.closed) {
+                        popup.close();
+                    }
+
+                    // Handle success based on context
+                    if (event.data.context === 'end-session') {
+                        // Close export overlay first
+                        exportOverlay.classList.add('hidden');
+                        exportOverlay.classList.remove('flex');
+                        
+                        // Show success screen
+                        endSessionStreaming.classList.remove('hidden');
+                        endSessionStreaming.classList.add('flex');
+                        
+                        // Update the message for SoundCloud
+                        const messageEls = endSessionStreaming.querySelectorAll('p');
+                        if (messageEls.length > 0) {
+                            messageEls[0].textContent = 'Your list has been sent to your SoundCloud profile';
+                        }
+                    } else {
+                        // Mid-session: close overlay and continue
+                        closeOverlay();
+                    }
+                } else if (event.data.type === 'soundcloud-auth-error') {
+                    // Remove listener
+                    window.removeEventListener('message', messageListener);
+                    
+                    // Close popup if still open
+                    if (popup && !popup.closed) {
+                        popup.close();
+                    }
+
+                    // Show error
+                    alert(event.data.message || 'Failed to connect to SoundCloud. Please try again.');
+                }
+            };
+
+            window.addEventListener('message', messageListener);
+
+            // Check if popup was blocked
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                alert('Popup was blocked. Please allow popups for this site and try again.');
+            }
+
+            // Fallback: check if popup closed manually (user might have closed it)
+            const checkClosed = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkClosed);
+                    window.removeEventListener('message', messageListener);
+                }
+            }, 1000);
+        }
 
         // Enable send button only if email is filled
         emailInput.addEventListener('input', () => {
@@ -1147,6 +1247,24 @@
             // Show save confirmation
             profileSaveOverlay.classList.remove('hidden');
             profileSaveOverlay.classList.add('flex');
+        }
+
+        // Handle SoundCloud success after OAuth callback
+        const soundcloudSuccess = '@ViewData["SoundCloudSuccess"]' === 'True';
+        if (soundcloudSuccess) {
+            // Stop any ongoing activity
+            stopPreview();
+            stopPolling();
+
+            // Hide other overlays defensively
+            exportOverlay.classList.add('hidden');
+            exportOverlay.classList.remove('flex');
+            endSessionOverlay.classList.add('hidden');
+            endSessionEmail.classList.add('hidden');
+
+            // Show SoundCloud success screen
+            endSessionStreaming.classList.remove('hidden');
+            endSessionStreaming.classList.add('flex');
         }
 
 

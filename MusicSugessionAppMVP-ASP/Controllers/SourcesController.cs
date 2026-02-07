@@ -14,6 +14,7 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         private readonly Persistence _db;
         private readonly IEmailService _emailService;
         private readonly AppleMusicService _appleMusic;
+        private readonly ISoundCloudApiService _soundCloudApiService;
 
         // NOTE: Session Terminology
         // - "User Login Session" = ASP.NET HttpContext.Session (managed by ASP.NET, tied to browser cookie)
@@ -25,11 +26,12 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         private const int PrimaryRefillThreshold = 10;
         private const int PrimaryRefillBatchSize = 5;
 
-        public SourcesController(Persistence db, IEmailService emailService, AppleMusicService appleMusic)
+        public SourcesController(Persistence db, IEmailService emailService, AppleMusicService appleMusic, ISoundCloudApiService soundCloudApiService)
         {
             _db = db;
             _emailService = emailService;
             _appleMusic = appleMusic;
+            _soundCloudApiService = soundCloudApiService;
         }
 
         [HttpGet]
@@ -114,18 +116,26 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         //}
 
         [HttpGet]
-        public IActionResult Review(string? postLogin = null)
+        public IActionResult Review(string? postLogin = null, bool? soundcloudSuccess = null)
         {
             //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
             //    return RedirectToAction("Login", "Home");
 
             ViewData["PostLogin"] = postLogin;
+            ViewData["SoundCloudSuccess"] = soundcloudSuccess == true;
 
             var sessionKey = HttpContext.Session.Id;
 
-            // Safety check: if no active crate exists, redirect to Index
-            if (!_crates.TryGetValue(sessionKey, out var crate) || 
-                crate.LifecycleState != CrateLifecycleState.Active)
+            // Safety check: if no crate exists, redirect to Index
+            if (!_crates.TryGetValue(sessionKey, out var crate))
+            {
+                return RedirectToAction("Index");
+            }
+
+            // Allow Ended/Exported state if showing SoundCloud success
+            if (crate.LifecycleState != CrateLifecycleState.Active && 
+                crate.LifecycleState != CrateLifecycleState.Ended && 
+                crate.LifecycleState != CrateLifecycleState.Exported)
             {
                 return RedirectToAction("Index");
             }
@@ -337,6 +347,25 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 }
 
                 return Json(new { status = "email-sent" });
+            }
+
+            // SoundCloud export handling
+            if (crate.SelectedExportMedium == ExportMedium.SoundCloud)
+            {
+                var accessToken = HttpContext.Session.GetString("SC_AccessToken");
+                if (string.IsNullOrEmpty(accessToken))
+                {
+                    // User hasn't connected yet, return status to trigger OAuth
+                    return Json(new { status = "soundcloud-not-connected" });
+                }
+
+                // User is already connected, create playlist
+                var result = await CreateSoundCloudPlaylistAsync(crate, accessToken);
+                if (result is JsonResult jsonResult)
+                {
+                    return jsonResult;
+                }
+                return result;
             }
 
             // Future: Spotify / Apple Music
@@ -1063,6 +1092,182 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                     stats.TotalLikes++;
                 else
                     stats.TotalDislikes++;
+            }
+        }
+
+        [HttpGet]
+        public IActionResult SoundCloudAuth()
+        {
+            var sessionKey = HttpContext.Session.Id;
+            
+            if (!_crates.TryGetValue(sessionKey, out var crate))
+                return RedirectToAction("Index");
+
+            // Store context in session to know if this is mid-session or end-session
+            var context = HttpContext.Request.Query["context"].ToString();
+            if (!string.IsNullOrEmpty(context))
+            {
+                HttpContext.Session.SetString("SC_Context", context);
+            }
+
+            var redirectUri = Url.Action("SoundCloudCallback", "Sources", null, Request.Scheme);
+            var authUrl = _soundCloudApiService.GetAuthorizationUrl(redirectUri);
+            
+            return Redirect(authUrl);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SoundCloudCallback(string? code, string? error)
+        {
+            var context = HttpContext.Session.GetString("SC_Context") ?? "";
+            
+            if (!string.IsNullOrEmpty(error))
+            {
+                // User denied access
+                ViewData["Success"] = false;
+                ViewData["Context"] = context;
+                ViewData["Message"] = "SoundCloud authorization was denied.";
+                HttpContext.Session.Remove("SC_Context");
+                return View("SoundCloudCallback");
+            }
+
+            if (string.IsNullOrEmpty(code))
+            {
+                ViewData["Success"] = false;
+                ViewData["Context"] = context;
+                ViewData["Message"] = "Authorization code is missing.";
+                HttpContext.Session.Remove("SC_Context");
+                return View("SoundCloudCallback");
+            }
+
+            var sessionKey = HttpContext.Session.Id;
+            var redirectUri = Url.Action("SoundCloudCallback", "Sources", null, Request.Scheme);
+
+            try
+            {
+                var accessToken = await _soundCloudApiService.ExchangeCodeForTokenAsync(code, redirectUri);
+                
+                // Store access token in session
+                HttpContext.Session.SetString("SC_AccessToken", accessToken);
+                
+                // Update crate to use SoundCloud export
+                if (_crates.TryGetValue(sessionKey, out var crate))
+                {
+                    lock (crate)
+                    {
+                        crate.SelectedExportMedium = ExportMedium.SoundCloud;
+                    }
+                }
+
+                // Check context - if mid-session, return to review; if end-session, continue with export
+                HttpContext.Session.Remove("SC_Context");
+
+                if (context == "end-session")
+                {
+                    // End session was already called, now create playlist
+                    try
+                    {
+                        await CreateSoundCloudPlaylistAsync(crate, accessToken);
+                        // Return success view
+                        ViewData["Success"] = true;
+                        ViewData["Context"] = context;
+                        ViewData["Message"] = "Playlist created successfully.";
+                        return View("SoundCloudCallback");
+                    }
+                    catch (Exception ex)
+                    {
+                        ViewData["Success"] = false;
+                        ViewData["Context"] = context;
+                        ViewData["Message"] = "Failed to create SoundCloud playlist. Please try again.";
+                        return View("SoundCloudCallback");
+                    }
+                }
+                
+                // Mid-session: close overlay and continue
+                ViewData["Success"] = true;
+                ViewData["Context"] = context;
+                ViewData["Message"] = "Connected successfully.";
+                return View("SoundCloudCallback");
+            }
+            catch (Exception ex)
+            {
+                // Handle error - return error view
+                ViewData["Success"] = false;
+                ViewData["Context"] = context;
+                ViewData["Message"] = "Failed to connect to SoundCloud. Please try again.";
+                HttpContext.Session.Remove("SC_Context");
+                return View("SoundCloudCallback");
+            }
+        }
+
+        private async Task<long?> FindSoundCloudTrackId(TrackInfo track)
+        {
+            if (track == null || string.IsNullOrWhiteSpace(track.Name))
+                return null;
+
+            try
+            {
+                return await _soundCloudApiService.SearchTrackIdAsync(track.Name);
+            }
+            catch (Exception)
+            {
+                // Log error if needed
+                return null;
+            }
+        }
+
+        private async Task<IActionResult> CreateSoundCloudPlaylistAsync(CrateSessionState crate, string accessToken)
+        {
+            try
+            {
+                // Create playlist
+                var playlistTitle = $"Speed Crating - {DateTime.UtcNow:yyyy-MM-dd}";
+                var playlistResponse = await _soundCloudApiService.CreatePlaylistAsync(accessToken, playlistTitle);
+                
+                // Parse playlist ID from response (SoundCloud returns JSON)
+                var playlistJson = JsonDocument.Parse(playlistResponse);
+                var playlistId = playlistJson.RootElement.GetProperty("id").GetInt64();
+
+                // Add tracks to playlist
+                foreach (var track in crate.LikedTracks)
+                {
+                    var soundCloudTrackId = await FindSoundCloudTrackId(track);
+                    if (soundCloudTrackId.HasValue)
+                    {
+                        await _soundCloudApiService.AddTrackToPlaylistAsync(
+                            accessToken, playlistId, soundCloudTrackId.Value);
+                    }
+                }
+
+                lock (crate)
+                {
+                    crate.LifecycleState = CrateLifecycleState.Exported;
+                }
+
+                // Persist export record
+                if (crate.SessionId != Guid.Empty)
+                {
+                    var export = new SessionExport
+                    {
+                        Id = Guid.NewGuid(),
+                        SessionId = crate.SessionId,
+                        Session = null!,
+                        Medium = ExportMedium.SoundCloud,
+                        ExportedAtUtc = DateTime.UtcNow
+                    };
+
+                    _db.SessionExports.Add(export);
+                    await _db.SaveChangesAsync();
+                }
+
+                // Clear access token from session
+                HttpContext.Session.Remove("SC_AccessToken");
+
+                return Json(new { status = "soundcloud-sent" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "error", message = ex.Message });
             }
         }
 

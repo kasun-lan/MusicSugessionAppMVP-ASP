@@ -16,5 +16,8 @@
             string accessToken,
             long playlistId,
             long trackId);
+
+        Task<long?> SearchTrackIdAsync(
+            string trackName);
     }
 }
