@@ -463,6 +463,22 @@
         document.addEventListener('click', markUserInteraction, { once: true });
         document.addEventListener('touchstart', markUserInteraction, { once: true });
 
+        function pausePreview() {
+            if (!audioEl) return;
+            if (!audioEl.paused) {
+                audioEl.pause();
+            }
+        }
+
+        function resumePreview() {
+            if (!audioEl) return;
+            if (audioEl.paused && audioEl.src) {
+                audioEl.play().catch(err => {
+                    console.debug('Preview resume failed:', err);
+                });
+            }
+        }
+
         function stopPreview() {
             if (!audioEl) return;
 
@@ -534,6 +550,7 @@
 
 
         endSessionBtn.addEventListener('click', () => {
+            pausePreview();
             endSessionOverlay.classList.remove('hidden');
             endSessionOverlay.classList.add('flex');
         });
@@ -542,10 +559,12 @@
             .addEventListener('click', () => {
                 endSessionOverlay.classList.add('hidden');
                 endSessionOverlay.classList.remove('flex');
+                resumePreview();
             });
 
         document.getElementById('confirm-end-session')
             .addEventListener('click', async () => {
+                stopPreview();
                 endSessionOverlay.classList.add('hidden');
                 endSessionOverlay.classList.remove('flex');
 
