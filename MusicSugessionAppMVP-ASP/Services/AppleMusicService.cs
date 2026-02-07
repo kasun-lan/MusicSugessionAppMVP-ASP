@@ -34,6 +34,14 @@ namespace MusicSugessionAppMVP_ASP.Services
         }
 
         /// <summary>
+        /// Gets the developer token for MusicKit JS initialization.
+        /// </summary>
+        public string GetDeveloperToken()
+        {
+            return _tokenService.GenerateDeveloperToken();
+        }
+
+        /// <summary>
         /// Escape hatch for "any endpoint". Pass relative path under /v1 (e.g. "catalog/us/search?...").
         /// </summary>
         public async Task<JsonDocument> GetRawAsync(string relativePathAndQuery, CancellationToken cancellationToken = default)
@@ -434,6 +442,184 @@ namespace MusicSugessionAppMVP_ASP.Services
 
             appleId = string.Empty;
             return false;
+        }
+
+        /// <summary>
+        /// Creates a playlist in the user's Apple Music library.
+        /// Requires both developer token and user token.
+        /// </summary>
+        public async Task<string?> CreatePlaylistAsync(
+            string userToken,
+            string name,
+            string? description = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userToken) || string.IsNullOrWhiteSpace(name))
+                return null;
+
+            var url = $"me/library/playlists";
+
+            using var request = CreateUserRequest(HttpMethod.Post, url, userToken);
+            
+            // Apple Music API expects data array with type and attributes
+            var payload = new Dictionary<string, object>
+            {
+                ["data"] = new[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["type"] = "library-playlists",
+                        ["attributes"] = new Dictionary<string, object>
+                        {
+                            ["name"] = name,
+                            ["description"] = description ?? string.Empty
+                        }
+                    }
+                }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var jsonDoc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            // Extract playlist ID from response
+            if (jsonDoc.RootElement.TryGetProperty("data", out var data) && 
+                data.ValueKind == JsonValueKind.Array && 
+                data.GetArrayLength() > 0)
+            {
+                var playlist = data[0];
+                if (playlist.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String)
+                {
+                    return idEl.GetString();
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Adds tracks to an existing playlist in the user's library.
+        /// </summary>
+        public async Task<bool> AddTracksToPlaylistAsync(
+            string userToken,
+            string playlistId,
+            List<string> trackIds,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(userToken) || 
+                string.IsNullOrWhiteSpace(playlistId) || 
+                trackIds == null || 
+                trackIds.Count == 0)
+                return false;
+
+            var url = $"me/library/playlists/{Uri.EscapeDataString(playlistId)}/tracks";
+
+            using var request = CreateUserRequest(HttpMethod.Post, url, userToken);
+
+            var payload = new Dictionary<string, object>
+            {
+                ["data"] = trackIds.Select(id => new Dictionary<string, object>
+                {
+                    ["id"] = id,
+                    ["type"] = "songs"
+                }).ToList()
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
+        }
+
+        /// <summary>
+        /// Searches for a track by name and artist, returning the Apple Music catalog ID.
+        /// </summary>
+        public async Task<string?> FindTrackIdAsync(
+            string trackName,
+            string artistName,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(trackName) || string.IsNullOrWhiteSpace(artistName))
+                return null;
+
+            var term = $"{artistName} {trackName}";
+            var url =
+                $"catalog/{_storefront}/search" +
+                $"?term={Uri.EscapeDataString(term)}" +
+                $"&types=songs" +
+                $"&limit=5";
+
+            using var request = CreateRequest(HttpMethod.Get, url);
+            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (!json.RootElement.TryGetProperty("results", out var results))
+                return null;
+
+            if (!results.TryGetProperty("songs", out var songsObj))
+                return null;
+
+            if (!songsObj.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array || data.GetArrayLength() == 0)
+                return null;
+
+            // Try to find best match
+            var normalizedTrackName = trackName.ToLowerInvariant();
+            var normalizedArtistName = artistName.ToLowerInvariant();
+
+            foreach (var song in data.EnumerateArray())
+            {
+                if (!song.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.String)
+                    continue;
+
+                if (!TryGetAttributes(song, out var attributes))
+                    continue;
+
+                var songName = attributes.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String
+                    ? nameEl.GetString()?.ToLowerInvariant() ?? ""
+                    : "";
+                var songArtist = attributes.TryGetProperty("artistName", out var artistEl) && artistEl.ValueKind == JsonValueKind.String
+                    ? artistEl.GetString()?.ToLowerInvariant() ?? ""
+                    : "";
+
+                // Check for match
+                if (songName.Contains(normalizedTrackName, StringComparison.OrdinalIgnoreCase) &&
+                    songArtist.Contains(normalizedArtistName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return idEl.GetString();
+                }
+            }
+
+            // If no exact match, return first result
+            var firstSong = data[0];
+            if (firstSong.TryGetProperty("id", out var firstIdEl) && firstIdEl.ValueKind == JsonValueKind.String)
+            {
+                return firstIdEl.GetString();
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Creates an HTTP request with both developer token and user token.
+        /// </summary>
+        private HttpRequestMessage CreateUserRequest(HttpMethod method, string relativePathAndQuery, string userToken)
+        {
+            var req = new HttpRequestMessage(method, relativePathAndQuery);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _tokenService.GenerateDeveloperToken());
+            req.Headers.Add("Music-User-Token", userToken);
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            return req;
         }
     }
 }

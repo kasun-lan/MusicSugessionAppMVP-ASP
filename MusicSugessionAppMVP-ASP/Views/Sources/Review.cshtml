@@ -108,7 +108,7 @@
 
                  
 
-                    <button class="export-close w-full border-2 border-white hover:border-white/50
+                    <button id="applemusic-option" class="w-full border-2 border-white hover:border-white/50
                                text-white text-sm py-3 px-4 rounded transition-colors">
                         Send to my Apple Music profile
                     </button>
@@ -650,6 +650,23 @@
                             endSessionStreaming.classList.add('flex');
                             break;
 
+                        case 'applemusic-not-connected':
+                            // User selected Apple Music but hasn't connected yet
+                            exportContext = 'end-session';
+                            openAppleMusicAuth('end-session');
+                            break;
+
+                        case 'applemusic-sent':
+                            // Playlist created successfully
+                            endSessionStreaming.classList.remove('hidden');
+                            endSessionStreaming.classList.add('flex');
+                            // Update the message for Apple Music
+                            const appleMessageEls = endSessionStreaming.querySelectorAll('p');
+                            if (appleMessageEls.length > 0) {
+                                appleMessageEls[0].textContent = 'Your list has been sent to your Apple Music profile';
+                            }
+                            break;
+
                         default:
                             alert('Unsupported export method.');
                             break;
@@ -997,6 +1014,18 @@
             });
         }
 
+        // Apple Music option handler
+        const applemusicOptionBtn = document.getElementById('applemusic-option');
+        if (applemusicOptionBtn) {
+            applemusicOptionBtn.addEventListener('click', () => {
+                // Determine context (mid-session or end-session)
+                const context = exportContext; // 'mid-session' or 'end-session'
+                
+                // Open Apple Music auth with MusicKit JS
+                openAppleMusicAuth(context);
+            });
+        }
+
         // Function to open SoundCloud auth in popup window
         function openSoundCloudAuth(context) {
             const width = 600;
@@ -1073,6 +1102,97 @@
                     window.removeEventListener('message', messageListener);
                 }
             }, 1000);
+        }
+
+        // Function to open Apple Music auth with MusicKit JS
+        async function openAppleMusicAuth(context) {
+            try {
+                // Check if MusicKit is available
+                if (typeof MusicKit === 'undefined') {
+                    // Load MusicKit JS if not already loaded
+                    await loadMusicKit();
+                }
+
+                // Get developer token from server (you'll need to create this endpoint)
+                const devTokenResponse = await fetch('/Sources/AppleMusicDeveloperToken');
+                if (!devTokenResponse.ok) {
+                    throw new Error('Failed to get developer token');
+                }
+                const { developerToken } = await devTokenResponse.json();
+
+                // Configure MusicKit
+                const musicKit = await MusicKit.configure({
+                    developerToken: developerToken,
+                    app: {
+                        name: 'Speed Crating',
+                        build: '1.0.0'
+                    }
+                });
+
+                // Authorize user
+                const userToken = await musicKit.authorize();
+                
+                if (!userToken) {
+                    throw new Error('User authorization failed');
+                }
+
+                // Send user token to server
+                const authResponse = await fetch('/Sources/AppleMusicAuth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userToken: userToken,
+                        context: context
+                    })
+                });
+
+                if (!authResponse.ok) {
+                    throw new Error('Failed to authenticate with server');
+                }
+
+                const result = await authResponse.json();
+
+                // Handle success based on context
+                if (context === 'end-session') {
+                    // Close export overlay first
+                    exportOverlay.classList.add('hidden');
+                    exportOverlay.classList.remove('flex');
+                    
+                    // Show success screen
+                    endSessionStreaming.classList.remove('hidden');
+                    endSessionStreaming.classList.add('flex');
+                    
+                    // Update the message for Apple Music
+                    const messageEls = endSessionStreaming.querySelectorAll('p');
+                    if (messageEls.length > 0) {
+                        messageEls[0].textContent = 'Your list has been sent to your Apple Music profile';
+                    }
+                } else {
+                    // Mid-session: close overlay and continue
+                    closeOverlay();
+                }
+            } catch (error) {
+                console.error('Apple Music auth error:', error);
+                alert('Failed to connect to Apple Music. Please make sure you have an Apple Music subscription and try again.');
+            }
+        }
+
+        // Function to load MusicKit JS
+        function loadMusicKit() {
+            return new Promise((resolve, reject) => {
+                if (typeof MusicKit !== 'undefined') {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://js-cdn.music.apple.com/musickit/v1/musickit.js';
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Failed to load MusicKit JS'));
+                document.head.appendChild(script);
+            });
         }
 
         // Enable send button only if email is filled
@@ -1265,6 +1385,30 @@
             // Show SoundCloud success screen
             endSessionStreaming.classList.remove('hidden');
             endSessionStreaming.classList.add('flex');
+        }
+
+        // Handle Apple Music success after OAuth callback
+        const applemusicSuccess = '@ViewData["AppleMusicSuccess"]' === 'True';
+        if (applemusicSuccess) {
+            // Stop any ongoing activity
+            stopPreview();
+            stopPolling();
+
+            // Hide other overlays defensively
+            exportOverlay.classList.add('hidden');
+            exportOverlay.classList.remove('flex');
+            endSessionOverlay.classList.add('hidden');
+            endSessionEmail.classList.add('hidden');
+
+            // Show Apple Music success screen
+            endSessionStreaming.classList.remove('hidden');
+            endSessionStreaming.classList.add('flex');
+            
+            // Update the message for Apple Music
+            const appleMessageEls = endSessionStreaming.querySelectorAll('p');
+            if (appleMessageEls.length > 0) {
+                appleMessageEls[0].textContent = 'Your list has been sent to your Apple Music profile';
+            }
         }
 
 

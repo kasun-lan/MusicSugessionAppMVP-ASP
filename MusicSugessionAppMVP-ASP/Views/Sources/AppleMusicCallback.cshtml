@@ -1,0 +1,86 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Apple Music Authorization";
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #333;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <p>Completing authorization...</p>
+    </div>
+
+    <script>
+        (function() {
+            const success = @Html.Raw(Json.Serialize(ViewData["Success"] ?? false));
+            const context = @Html.Raw(Json.Serialize(ViewData["Context"] ?? ""));
+            const message = @Html.Raw(Json.Serialize(ViewData["Message"] ?? ""));
+
+            if (window.opener) {
+                // We're in a popup window
+                if (success) {
+                    // Send success message to parent
+                    window.opener.postMessage({
+                        type: 'applemusic-auth-success',
+                        context: context,
+                        message: message
+                    }, window.location.origin);
+                } else {
+                    // Send error message to parent
+                    window.opener.postMessage({
+                        type: 'applemusic-auth-error',
+                        context: context,
+                        message: message || 'Authorization failed. Please try again.'
+                    }, window.location.origin);
+                }
+                
+                // Close the popup after a short delay
+                setTimeout(() => {
+                    window.close();
+                }, 500);
+            } else {
+                // Fallback: if not in popup, redirect to Review page
+                if (success && context === 'end-session') {
+                    window.location.href = '/Sources/Review?applemusicSuccess=true';
+                } else {
+                    window.location.href = '/Sources/Review';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

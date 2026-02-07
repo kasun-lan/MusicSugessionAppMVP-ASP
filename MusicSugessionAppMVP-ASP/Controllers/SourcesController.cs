@@ -116,13 +116,14 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         //}
 
         [HttpGet]
-        public IActionResult Review(string? postLogin = null, bool? soundcloudSuccess = null)
+        public IActionResult Review(string? postLogin = null, bool? soundcloudSuccess = null, bool? applemusicSuccess = null)
         {
             //if (HttpContext.Session.GetString("IsAuthenticated") != "true")
             //    return RedirectToAction("Login", "Home");
 
             ViewData["PostLogin"] = postLogin;
             ViewData["SoundCloudSuccess"] = soundcloudSuccess == true;
+            ViewData["AppleMusicSuccess"] = applemusicSuccess == true;
 
             var sessionKey = HttpContext.Session.Id;
 
@@ -368,7 +369,26 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 return result;
             }
 
-            // Future: Spotify / Apple Music
+            // Apple Music export handling
+            if (crate.SelectedExportMedium == ExportMedium.AppleMusic)
+            {
+                var userToken = HttpContext.Session.GetString("AM_UserToken");
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    // User hasn't connected yet, return status to trigger OAuth
+                    return Json(new { status = "applemusic-not-connected" });
+                }
+
+                // User is already connected, create playlist
+                var result = await CreateAppleMusicPlaylistAsync(crate, userToken);
+                if (result is JsonResult jsonResult)
+                {
+                    return jsonResult;
+                }
+                return result;
+            }
+
+            // Future: Spotify
             return Json(new { status = "unsupported" });
         }
 
@@ -1096,6 +1116,14 @@ namespace MusicSugessionAppMVP_ASP.Controllers
         }
 
         [HttpGet]
+        public IActionResult AppleMusicDeveloperToken()
+        {
+            // Return developer token for MusicKit JS initialization
+            var token = _appleMusic.GetDeveloperToken();
+            return Json(new { developerToken = token });
+        }
+
+        [HttpGet]
         public IActionResult SoundCloudAuth()
         {
             var sessionKey = HttpContext.Session.Id;
@@ -1264,6 +1292,146 @@ namespace MusicSugessionAppMVP_ASP.Controllers
                 HttpContext.Session.Remove("SC_AccessToken");
 
                 return Json(new { status = "soundcloud-sent" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "error", message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AppleMusicAuth([FromBody] AppleMusicAuthModel model)
+        {
+            var sessionKey = HttpContext.Session.Id;
+            
+            if (!_crates.TryGetValue(sessionKey, out var crate))
+                return BadRequest("Crate session not found.");
+
+            if (string.IsNullOrWhiteSpace(model.UserToken))
+                return BadRequest("User token is required.");
+
+            // Store user token in session
+            HttpContext.Session.SetString("AM_UserToken", model.UserToken);
+            
+            // Store context
+            if (!string.IsNullOrEmpty(model.Context))
+            {
+                HttpContext.Session.SetString("AM_Context", model.Context);
+            }
+
+            // Update crate to use Apple Music export
+            lock (crate)
+            {
+                crate.SelectedExportMedium = ExportMedium.AppleMusic;
+            }
+
+            // If end-session context, create playlist immediately
+            if (model.Context == "end-session")
+            {
+                try
+                {
+                    var result = await CreateAppleMusicPlaylistAsync(crate, model.UserToken);
+                    if (result is JsonResult jsonResult)
+                    {
+                        return jsonResult;
+                    }
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { status = "error", message = ex.Message });
+                }
+            }
+
+            return Json(new { status = "success", message = "Connected successfully." });
+        }
+
+        [HttpGet]
+        public IActionResult AppleMusicCallback(bool? success = null, string? message = null)
+        {
+            var context = HttpContext.Session.GetString("AM_Context") ?? "";
+            
+            ViewData["Success"] = success ?? false;
+            ViewData["Context"] = context;
+            ViewData["Message"] = message ?? (success == true ? "Connected successfully." : "Authorization failed.");
+
+            return View();
+        }
+
+        private async Task<IActionResult> CreateAppleMusicPlaylistAsync(CrateSessionState crate, string userToken)
+        {
+            try
+            {
+                // Create playlist
+                var playlistTitle = $"Speed Crating - {DateTime.UtcNow:yyyy-MM-dd}";
+                var playlistId = await _appleMusic.CreatePlaylistAsync(
+                    userToken, 
+                    playlistTitle, 
+                    "Playlist created by Speed Crating",
+                    CancellationToken.None);
+
+                if (string.IsNullOrWhiteSpace(playlistId))
+                {
+                    return StatusCode(500, new { status = "error", message = "Failed to create playlist." });
+                }
+
+                // Find Apple Music track IDs and add to playlist
+                var trackIds = new List<string>();
+                foreach (var track in crate.LikedTracks)
+                {
+                    var appleTrackId = await _appleMusic.FindTrackIdAsync(
+                        track.Name, 
+                        track.ArtistName, 
+                        CancellationToken.None);
+                    
+                    if (!string.IsNullOrWhiteSpace(appleTrackId))
+                    {
+                        trackIds.Add(appleTrackId);
+                    }
+                }
+
+                // Add tracks to playlist in batches (Apple Music may have limits)
+                if (trackIds.Count > 0)
+                {
+                    // Add tracks in batches of 50 (typical API limit)
+                    const int batchSize = 50;
+                    for (int i = 0; i < trackIds.Count; i += batchSize)
+                    {
+                        var batch = trackIds.Skip(i).Take(batchSize).ToList();
+                        await _appleMusic.AddTracksToPlaylistAsync(
+                            userToken, 
+                            playlistId, 
+                            batch, 
+                            CancellationToken.None);
+                    }
+                }
+
+                lock (crate)
+                {
+                    crate.LifecycleState = CrateLifecycleState.Exported;
+                }
+
+                // Persist export record
+                if (crate.SessionId != Guid.Empty)
+                {
+                    var export = new SessionExport
+                    {
+                        Id = Guid.NewGuid(),
+                        SessionId = crate.SessionId,
+                        Session = null!,
+                        Medium = ExportMedium.AppleMusic,
+                        ExportedAtUtc = DateTime.UtcNow
+                    };
+
+                    _db.SessionExports.Add(export);
+                    await _db.SaveChangesAsync();
+                }
+
+                // Clear user token from session
+                HttpContext.Session.Remove("AM_UserToken");
+                HttpContext.Session.Remove("AM_Context");
+
+                return Json(new { status = "applemusic-sent" });
             }
             catch (Exception ex)
             {
