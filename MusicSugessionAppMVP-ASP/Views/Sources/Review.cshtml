@@ -155,7 +155,7 @@
 
                 </p>
 
-                <button id="back-to-options" class="text-center text-white hover:text-white text-sm mt-8 py-2 transition-colors">
+                <button id="back-to-options" class="block mx-auto text-center text-white hover:text-white text-sm mt-8 py-2 transition-colors">
                     Back
                 </button>
             </div>
@@ -328,20 +328,35 @@
         @Html.Partial("_Logo")
 
         <div>
-            <h3 class="text-white font-bold text-base mb-4 uppercase">
-                End speed crating session?
-            </h3>
+            <div id="end-session-header">
+                <h3 class="text-white font-bold text-base mb-4 uppercase">
+                    End speed crating session?
+                </h3>
 
-            <p class="text-white text-sm mb-8">
-                All fun must come to an end so does this.
-                Please confirm below that you want to end the session and that we send your list of liked
-                tracks.
-            </p>
+                <p class="text-white text-sm mb-8">
+                    All fun must come to an end so does this.
+                    Please confirm below that you want to end the session and that we send your list of liked
+                    tracks.
+                </p>
+            </div>
 
             <!-- COMMON HEADER -->
-            <p class="text-[#B4FF00] text-sm mb-6">
+            <p id="old-email-sent-message" class="text-[#B4FF00] text-sm mb-6">
                 Your list has been sent to your email
             </p>
+
+            <!-- EMAIL SENT SUCCESS STATE -->
+            <div id="email-sent-success" class="hidden">
+                <p style="margin-bottom:20px" class="text-[#B4FF00] text-sm mb-12 text-center">
+                    Your link has been sent
+                </p>
+
+                <button id="start-new-session-btn"
+                        class="w-full bg-[#B4FF00] hover:bg-[#A0E600]
+               text-black font-bold py-3 px-4 rounded transition-colors"> 
+                    Start a new creating session
+                </button>
+            </div>
 
             <!-- LOGGED-IN VARIANT -->
             <div id="email-logged-in" class="hidden">
@@ -588,20 +603,21 @@
                             endSessionEmail.classList.remove('hidden');
                             endSessionEmail.classList.add('flex');
 
-                            const authData = await getAuthStatus();
+                            // Hide old header and description
+                            document.getElementById('end-session-header')
+                                .classList.add('hidden');
+                            document.getElementById('old-email-sent-message')
+                                .classList.add('hidden');
 
-                            if (authData.isAuthenticated) {
-                                document.getElementById('email-logged-in')
-                                    .classList.remove('hidden');
-                                document.getElementById('email-logged-out')
-                                    .classList.add('hidden');
-                            } else {
-                                document.getElementById('email-logged-out')
-                                    .classList.remove('hidden');
-                                document.getElementById('email-logged-in')
-                                    .classList.add('hidden');
-                            }
+                            // Hide old conditional elements
+                            document.getElementById('email-logged-in')
+                                .classList.add('hidden');
+                            document.getElementById('email-logged-out')
+                                .classList.add('hidden');
 
+                            // Show new success message and button
+                            document.getElementById('email-sent-success')
+                                .classList.remove('hidden');
 
                             break;
 
@@ -1005,19 +1021,21 @@
                         endSessionEmail.classList.remove('hidden');
                         endSessionEmail.classList.add('flex');
 
-                        const authData = await getAuthStatus();
+                        // Hide old header and description
+                        document.getElementById('end-session-header')
+                            .classList.add('hidden');
+                        document.getElementById('old-email-sent-message')
+                            .classList.add('hidden');
 
-                        if (authData.isAuthenticated) {
-                            document.getElementById('email-logged-in')
-                                .classList.remove('hidden');
-                            document.getElementById('email-logged-out')
-                                .classList.add('hidden');
-                        } else {
-                            document.getElementById('email-logged-out')
-                                .classList.remove('hidden');
-                            document.getElementById('email-logged-in')
-                                .classList.add('hidden');
-                        }
+                        // Hide old conditional elements
+                        document.getElementById('email-logged-in')
+                            .classList.add('hidden');
+                        document.getElementById('email-logged-out')
+                            .classList.add('hidden');
+
+                        // Show new success message and button
+                        document.getElementById('email-sent-success')
+                            .classList.remove('hidden');
                     }
                 }
 
@@ -1083,6 +1101,11 @@
         document.getElementById('continue-crating')
             .addEventListener('click', () => {
                 closeOverlay();
+            });
+
+        document.getElementById('start-new-session-btn')
+            .addEventListener('click', () => {
+                window.location.href = '/Sources/Index';
             });
 
 
